@@ -5,23 +5,26 @@ function getEnv(name: string) {
 export async function generateTextWithFallback(
   systemPrompt: string,
   history: Array<{ role: string; content: string }>,
+  options: { maxTokens?: number; temperature?: number } = {},
 ): Promise<string> {
+  const maxTokens = options.maxTokens ?? 300
+  const temperature = options.temperature ?? 0.7
   const attempts: Array<() => Promise<string>> = []
 
   if (getEnv("DEEPSEEK_API_KEY")) {
-    attempts.push(async () => generateWithDeepSeek(systemPrompt, history))
+    attempts.push(async () => generateWithDeepSeek(systemPrompt, history, maxTokens, temperature))
   }
 
   if (getEnv("OPENAI_API_KEY")) {
-    attempts.push(async () => generateWithOpenAI(systemPrompt, history))
+    attempts.push(async () => generateWithOpenAI(systemPrompt, history, maxTokens, temperature))
   }
 
   if (getEnv("GROQ_API_KEY")) {
-    attempts.push(async () => generateWithGroq(systemPrompt, history))
+    attempts.push(async () => generateWithGroq(systemPrompt, history, maxTokens, temperature))
   }
 
   if (getEnv("GEMINI_API_KEY")) {
-    attempts.push(async () => generateWithGemini(systemPrompt, history))
+    attempts.push(async () => generateWithGemini(systemPrompt, history, maxTokens, temperature))
   }
 
   if (!attempts.length) {
@@ -49,7 +52,7 @@ export async function generateTextWithFallback(
 }`
 }
 
-async function generateWithDeepSeek(systemPrompt: string, history: Array<{ role: string; content: string }>) {
+async function generateWithDeepSeek(systemPrompt: string, history: Array<{ role: string; content: string }>, maxTokens: number, temperature: number) {
   const apiKey = getEnv("DEEPSEEK_API_KEY")
   if (!apiKey) throw new Error("DeepSeek API key missing")
 
@@ -61,8 +64,8 @@ async function generateWithDeepSeek(systemPrompt: string, history: Array<{ role:
     },
     body: JSON.stringify({
       model: getEnv("DEEPSEEK_MODEL") || "deepseek-chat",
-      temperature: 0.7,
-      max_tokens: 300,
+      temperature,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: systemPrompt },
         ...history,
@@ -79,7 +82,7 @@ async function generateWithDeepSeek(systemPrompt: string, history: Array<{ role:
   return data.choices?.[0]?.message?.content || ""
 }
 
-async function generateWithOpenAI(systemPrompt: string, history: Array<{ role: string; content: string }>) {
+async function generateWithOpenAI(systemPrompt: string, history: Array<{ role: string; content: string }>, maxTokens: number, temperature: number) {
   const apiKey = getEnv("OPENAI_API_KEY")
   if (!apiKey) throw new Error("OpenAI API key missing")
 
@@ -91,8 +94,8 @@ async function generateWithOpenAI(systemPrompt: string, history: Array<{ role: s
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      temperature: 0.7,
-      max_tokens: 300,
+      temperature,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: systemPrompt },
         ...history,
@@ -109,7 +112,7 @@ async function generateWithOpenAI(systemPrompt: string, history: Array<{ role: s
   return data.choices?.[0]?.message?.content || ""
 }
 
-async function generateWithGroq(systemPrompt: string, history: Array<{ role: string; content: string }>) {
+async function generateWithGroq(systemPrompt: string, history: Array<{ role: string; content: string }>, maxTokens: number, temperature: number) {
   const apiKey = getEnv("GROQ_API_KEY")
   if (!apiKey) throw new Error("Groq API key missing")
 
@@ -121,8 +124,8 @@ async function generateWithGroq(systemPrompt: string, history: Array<{ role: str
     },
     body: JSON.stringify({
       model: getEnv("GROQ_MODEL") || "llama-3.3-70b-versatile",
-      temperature: 0.7,
-      max_tokens: 300,
+      temperature,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: systemPrompt },
         ...history,
@@ -139,7 +142,7 @@ async function generateWithGroq(systemPrompt: string, history: Array<{ role: str
   return data.choices?.[0]?.message?.content || ""
 }
 
-async function generateWithGemini(systemPrompt: string, history: Array<{ role: string; content: string }>) {
+async function generateWithGemini(systemPrompt: string, history: Array<{ role: string; content: string }>, maxTokens: number, temperature: number) {
   const apiKey = getEnv("GEMINI_API_KEY")
   if (!apiKey) throw new Error("Gemini API key missing")
 
@@ -158,7 +161,7 @@ async function generateWithGemini(systemPrompt: string, history: Array<{ role: s
           { role: "user", parts: [{ text: systemPrompt }] },
           ...messages,
         ],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
       }),
     },
   )
