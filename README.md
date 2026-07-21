@@ -1,26 +1,33 @@
 # Startup Copilot Africa
 
 ## Tagline
+
 Your AI Co-Founder for Building Businesses in Africa.
 
 ## Overview
+
 Startup Copilot Africa is an AI-powered platform that helps African entrepreneurs turn business ideas into validated business plans and actionable growth strategies. Many founders have promising ideas but lack access to business expertise, affordable mentorship, and tools adapted to local markets. Startup Copilot Africa closes that gap with an AI co-founder that guides users through idea validation, business planning, market analysis, financial estimation, marketing strategy, and growth roadmaps.
 
 ## Key Features
 
 ### AI Business Interview
+
 An intelligent conversational assistant asks entrepreneurs targeted questions to understand their idea, market, budget, and goals.
 
 ### AI Business Plan Generator
+
 The platform generates executive summaries, business models, SWOT analyses, market analysis, financial projections, and launch roadmaps.
 
 ### AI Copilot Assistant
+
 A contextual AI advisor helps entrepreneurs make better decisions and improve their business strategy over time.
 
 ### Business Dashboard
+
 The dashboard provides a business health score, recommendations, documents, and progress tracking in one place.
 
 ### African Market Focus
+
 The product is designed for African currencies, local entrepreneurship challenges, and regional business environments.
 
 ## How It Works
@@ -34,22 +41,27 @@ The product is designed for African currencies, local entrepreneurship challenge
 ## Technology Stack
 
 Frontend:
+
 - Next.js
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
 
 Backend:
+
 - Next.js API Routes
 - OpenAI API
 
 Database:
+
 - Supabase
 
 Deployment:
+
 - Vercel
 
 AI:
+
 - OpenAI GPT-5.6
 - Structured Outputs
 - AI-powered workflows
@@ -69,6 +81,7 @@ Supabase Database
 Business Dashboard
 
 The architecture is modular and organized around:
+
 - Authentication module
 - Business module
 - AI module

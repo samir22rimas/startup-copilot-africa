@@ -67,10 +67,10 @@ export function StartupWizard() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-10">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-10 transition-all duration-500 hover:shadow-2xl font-sans">
       <div className="flex items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-green-100 text-green-700 dark:bg-green-950/50">
-          <Sparkles className="size-6" />
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-green-100 text-green-700 dark:bg-green-950/50 shadow-sm shrink-0">
+          <Sparkles className="size-6 text-green-700 dark:text-green-400" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">Let&apos;s build your co-founder engine</h1>
@@ -80,14 +80,14 @@ export function StartupWizard() {
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         {error && (
-          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
+          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-100 dark:border-red-900/30 shadow-sm">
             {error}
           </div>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Startup / Company Name</label>
+            <label htmlFor="name" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Startup / Company Name</label>
             <input
               id="name"
               type="text"
@@ -100,7 +100,7 @@ export function StartupWizard() {
           </div>
 
           <div>
-            <label htmlFor="projectTitle" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Project / Idea Title</label>
+            <label htmlFor="projectTitle" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Project / Idea Title</label>
             <input
               id="projectTitle"
               type="text"
@@ -114,7 +114,7 @@ export function StartupWizard() {
         </div>
 
         <div>
-          <label htmlFor="projectDescription" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Describe your product/service idea</label>
+          <label htmlFor="projectDescription" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Describe your product/service idea</label>
           <textarea
             id="projectDescription"
             rows={3}
@@ -127,7 +127,7 @@ export function StartupWizard() {
 
         <div className="grid gap-6 sm:grid-cols-3">
           <div>
-            <label htmlFor="country" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Country of Operation</label>
+            <label htmlFor="country" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Country of Operation</label>
             <select
               id="country"
               value={countryCode}
@@ -141,7 +141,7 @@ export function StartupWizard() {
           </div>
 
           <div>
-            <label htmlFor="city" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">City / Town</label>
+            <label htmlFor="city" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">City / Town</label>
             <input
               id="city"
               type="text"
@@ -154,7 +154,7 @@ export function StartupWizard() {
           </div>
 
           <div>
-            <label htmlFor="industry" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Industry / Sector</label>
+            <label htmlFor="industry" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Industry / Sector</label>
             <select
               id="industry"
               value={industry}
@@ -173,7 +173,7 @@ export function StartupWizard() {
         </div>
 
         <div>
-          <label htmlFor="budget" className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Starting Budget ({currency})</label>
+          <label htmlFor="budget" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Starting Budget ({currency})</label>
           <input
             id="budget"
             type="number"
@@ -186,7 +186,7 @@ export function StartupWizard() {
         <button
           type="submit"
           disabled={loading}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-green-700 font-semibold text-white transition hover:bg-green-800 disabled:opacity-50"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-green-700 font-semibold text-white transition-all duration-300 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-md shadow-green-900/15"
         >
           {loading ? (
             <>
