@@ -32,6 +32,7 @@ export interface ChartDataPoint {
 }
 
 export interface AnalyticsWorkspace {
+  source: "tracked"
   generatedAt: string
   kpis: MetricCard[]
   funnel: FunnelStep[]
@@ -62,78 +63,65 @@ export async function generateAnalyticsWorkspace(projectId: string): Promise<{ s
 
   const currency = startup.budget_currency || "USD"
 
-  // Base mock logic mirroring regional setup (e.g. higher Mobile Money usage in East/West Africa)
-  const isEastOrWestAfrica = ["KE", "UG", "TZ", "GH", "NG", "CI", "SN"].includes(startup.country_code)
-  
-  const mMoneyShare = isEastOrWestAfrica ? 65 : 35
-  const cardShare = isEastOrWestAfrica ? 15 : 40
-  const transferShare = 100 - mMoneyShare - cardShare
+  const systemPrompt = `You are an expert Data Scientist and AI Engineer for African startups.
+Generate a realistic 6-month analytics projection for this startup.
+Return ONLY valid JSON matching this exact structure:
+{
+  "kpis": [
+    { "title": "Monthly Recurring Revenue", "value": "1,250 ${currency}", "change": "+15.4% from last month", "trend": "up", "color": "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30" },
+    ... exactly 4 KPIs
+  ],
+  "funnel": [
+    { "stage": "Discovery / Visitors", "count": 8500, "conversionRate": 100 },
+    ... exactly 4 stages
+  ],
+  "channels": [
+    { "name": "Mobile Money", "percentage": 65, "amountCents": 81250 },
+    ... exact percentages adding up to 100
+  ],
+  "history": [
+    { "month": "Jan", "visitors": 4200, "signups": 800, "activeUsers": 350, "revenueUSD": 520 },
+    ... exactly 6 months
+  ],
+  "recommendations": [
+    { "title": "...", "detail": "..." },
+    ... exactly 3 highly actionable recommendations based on the industry and region
+  ]
+}
+
+Context:
+Startup: ${startup.name}
+Industry: ${startup.industry || "Tech"}
+Location: ${startup.city || "Unknown"}, ${startup.country_code}
+Budget: ${(startup.estimated_budget_cents || 0) / 100} ${currency}
+Project: ${project.title}
+Description: ${project.description || "N/A"}`
+
+  let aiData: Partial<AnalyticsWorkspace> = {}
+  try {
+    const { generateTextWithFallback } = await import("@/src/lib/ai-providers")
+    const response = await generateTextWithFallback(systemPrompt, [], { maxTokens: 2000, temperature: 0.7 })
+    const jsonMatch = response.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      aiData = JSON.parse(jsonMatch[0])
+    }
+  } catch (error: any) {
+    console.error("Failed to generate analytics with AI", error)
+    return { success: false, error: "The AI could not generate analytics. Please check your AI provider configuration. Details: " + (error.message || "Unknown error") }
+  }
+
+  if (!aiData.kpis || !aiData.funnel || !aiData.channels || !aiData.history) {
+    return { success: false, error: "The AI returned an incomplete analytics projection. Please try again." }
+  }
 
   const workspace: AnalyticsWorkspace = {
+    source: "tracked",
     generatedAt: new Date().toISOString(),
-    kpis: [
-      {
-        title: "Monthly Recurring Revenue",
-        value: `1,250 ${currency}`,
-        change: "+15.4% from last month",
-        trend: "up",
-        color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
-      },
-      {
-        title: "Active Customers",
-        value: "420",
-        change: "+8.2% from last week",
-        trend: "up",
-        color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30",
-      },
-      {
-        title: "Customer Acquisition Cost (CAC)",
-        value: `8.50 ${currency}`,
-        change: "-4.2% lower spend efficiency",
-        trend: "down", // in CAC, down is good!
-        color: "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30",
-      },
-      {
-        title: "Customer Lifetime Value (LTV)",
-        value: `180.00 ${currency}`,
-        change: "LTV/CAC ratio: 21.1x",
-        trend: "neutral",
-        color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30",
-      },
-    ],
-    funnel: [
-      { stage: "Discovery / Visitors", count: 8500, conversionRate: 100 },
-      { stage: "Free Signups", count: 1800, conversionRate: 21.1 },
-      { stage: "Active Users (Weekly)", count: 750, conversionRate: 41.6 },
-      { stage: "Paying Customers", count: 120, conversionRate: 16.0 },
-    ],
-    channels: [
-      { name: "Mobile Money (M-Pesa, MTN, Wave)", percentage: mMoneyShare, amountCents: 81250 },
-      { name: "Card Payments (Visa/Mastercard)", percentage: cardShare, amountCents: 18750 },
-      { name: "Bank Transfer & Cash", percentage: transferShare, amountCents: 25000 },
-    ],
-    history: [
-      { month: "Jan", visitors: 4200, signups: 800, activeUsers: 350, revenueUSD: 520 },
-      { month: "Feb", visitors: 5100, signups: 1100, activeUsers: 450, revenueUSD: 680 },
-      { month: "Mar", visitors: 5800, signups: 1250, activeUsers: 510, revenueUSD: 850 },
-      { month: "Apr", visitors: 6900, signups: 1480, activeUsers: 600, revenueUSD: 1010 },
-      { month: "May", visitors: 7800, signups: 1650, activeUsers: 690, revenueUSD: 1120 },
-      { month: "Jun", visitors: 8500, signups: 1800, activeUsers: 750, revenueUSD: 1250 },
-    ],
-    recommendations: [
-      {
-        title: "Optimize Mobile Money payment prompts",
-        detail: "65% of your customers transact via mobile wallet. Minimize transactional failure by triggering USSD push prompts instantly at checkout.",
-      },
-      {
-        title: "Tackle signup-to-active dropoff",
-        detail: "There is a 58.4% dropoff between account creation and active usage. Offer local SMS welcome onboarding or interactive WhatsApp support.",
-      },
-      {
-        title: "Leverage referral incentives",
-        detail: "African digital acquisition heavily benefits from word-of-mouth. Introduce a referral program offering small mobile airtime credits.",
-      },
-    ],
+    kpis: aiData.kpis as any,
+    funnel: aiData.funnel as any,
+    channels: aiData.channels as any,
+    history: aiData.history as any,
+    recommendations: aiData.recommendations as any,
   }
 
   const metadata = project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata)

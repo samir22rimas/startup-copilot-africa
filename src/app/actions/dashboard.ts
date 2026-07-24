@@ -348,12 +348,40 @@ export async function getDashboardData() {
 
   // If no tasks exist, initialize defaults
   if (tasks.length === 0) {
-    tasks = [
-      { id: "problem", title: `Validate the target customer problem in ${startup.city || startup.country_code}`, tag: "Research", done: false },
-      { id: "market", title: "Map your first customer segment & local purchasing power", tag: "Strategy", done: false },
-      { id: "offer", title: `Define product pricing in ${startup.budget_currency || "USD"}`, tag: "Planning", done: false },
-      { id: "payments", title: "Identify local payment options (e.g. Mobile Money, Card)", tag: "Infrastructure", done: false },
-    ]
+    const systemPrompt = `You are a Startup Advisor for an African founder.
+Based on the startup details, generate exactly 4 actionable, highly specific tasks for their initial launch dashboard.
+Return ONLY valid JSON matching this exact structure:
+[
+  { "id": "task_1", "title": "...", "tag": "Research", "done": false },
+  ... exactly 4 tasks
+]
+Tags should be one of: Research, Strategy, Planning, Infrastructure, Marketing.
+Context:
+Startup: ${startup.name}
+Location: ${startup.city || "Unknown"}, ${startup.country_code || "Africa"}
+Budget: ${(startup.estimated_budget_cents || 0) / 100} ${startup.budget_currency || "USD"}
+Project: ${project.title}
+Description: ${project.description || "N/A"}`
+
+    try {
+      const { generateTextWithFallback } = await import("@/src/lib/ai-providers")
+      const response = await generateTextWithFallback(systemPrompt, [], { maxTokens: 800, temperature: 0.6 })
+      const jsonMatch = response.match(/\[[\s\S]*\]/)
+      if (jsonMatch) {
+        tasks = JSON.parse(jsonMatch[0])
+      }
+    } catch (error: any) {
+      console.error("Failed to generate initial tasks with AI", error)
+      tasks = [
+        { id: "error", title: `Failed to generate personalized tasks. Check your AI provider configuration. Error: ${error.message || "Unknown"}`, tag: "Error", done: false }
+      ]
+    }
+
+    if (tasks.length === 0) {
+      tasks = [
+        { id: "error", title: "The AI returned an empty task list. Please refresh or try again.", tag: "Error", done: false }
+      ]
+    }
 
     // Save defaults to metadata
     await supabase

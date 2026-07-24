@@ -10,9 +10,9 @@ import { useMarketing } from "./MarketingContext"
 export function AiGenerator() {
   const { addEvent } = useMarketing()
   
-  const [prompt, setPrompt] = React.useState("New product launch announcement")
+  const [prompt, setPrompt] = React.useState("")
   const [isGenerating, setIsGenerating] = React.useState(false)
-  const [content, setContent] = React.useState("Generating launch-ready content from your latest startup context...")
+  const [content, setContent] = React.useState("")
 
   React.useEffect(() => {
     const loadPreview = async () => {
@@ -91,7 +91,7 @@ export function AiGenerator() {
             <span className="text-xs font-bold text-green-700 dark:text-green-500">Preview (LinkedIn)</span>
           </div>
           <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
-            {content}
+            {content || "Enter a topic to generate content from your saved startup context."}
           </p>
         </div>
 

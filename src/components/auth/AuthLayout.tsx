@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -50,7 +51,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Right Pane - Form Section */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-24">
+      <div className="flex-1 relative flex flex-col justify-center px-6 sm:px-12 lg:px-24">
+        <ThemeToggle className="absolute right-6 top-6 sm:right-12 lg:right-16" />
         {children}
       </div>
     </div>

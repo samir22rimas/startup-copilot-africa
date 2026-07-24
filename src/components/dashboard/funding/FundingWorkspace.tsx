@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 interface FundingWorkspaceProps {
   projectId: string
@@ -30,10 +31,10 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
   const [isSaving, setIsSaving] = React.useState(false)
 
   // Local state for interactive calculators
-  const [cashBalance, setCashBalance] = React.useState<number>(initialWorkspace?.cashBalance || 5000)
-  const [monthlyBurn, setMonthlyBurn] = React.useState<number>(initialWorkspace?.monthlyBurn || 800)
-  const [fundingGoal, setFundingGoal] = React.useState<number>(initialWorkspace?.fundingGoal || 50000)
-  const [valuation, setValuation] = React.useState<number>(initialWorkspace?.valuation || 350000)
+  const [cashBalance, setCashBalance] = React.useState<number>(initialWorkspace?.cashBalance ?? 0)
+  const [monthlyBurn, setMonthlyBurn] = React.useState<number>(initialWorkspace?.monthlyBurn ?? 0)
+  const [fundingGoal, setFundingGoal] = React.useState<number>(initialWorkspace?.fundingGoal ?? 0)
+  const [valuation, setValuation] = React.useState<number>(initialWorkspace?.valuation ?? 0)
 
   // Compute runway and dilution
   const runwayMonths = monthlyBurn > 0 ? parseFloat((cashBalance / monthlyBurn).toFixed(1)) : 0
@@ -155,8 +156,8 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
             ? "border-amber-200 bg-amber-50/40 dark:border-amber-800/30 dark:bg-amber-950/15" 
             : "border-rose-200 bg-rose-50/40 dark:border-rose-800/30 dark:bg-rose-950/15"
         }`}>
-          <div className="flex flex-col md:flex-row justify-between gap-6">
-            <div>
+          <div className="flex flex-col md:flex-row justify-between gap-3 sm:w-full">
+            <div className="flex-1 w-100 space-y-2">
               <h2 className="font-bold text-zinc-900 dark:text-white text-lg">Operational Cash Runway</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Based on current cash balance and monthly burn rate.</p>
               
@@ -177,7 +178,7 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
               </p>
             </div>
             
-            <div className="flex-1 max-w-sm space-y-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm">
+            <div className="flex-1 w-100  space-y-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm">
               <h3 className="font-semibold text-xs text-zinc-400 uppercase tracking-wider">Adjust cash runway assumptions</h3>
               <div className="space-y-3">
                 <div>
@@ -255,9 +256,12 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
               <h3 className="font-bold text-zinc-900 dark:text-white">Pitch Deck Progress</h3>
               <p className="text-xs text-zinc-500">Build key investor story slides aligned with African markets.</p>
             </div>
-            <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 dark:bg-green-950/40 dark:text-green-400">
-              {pitchCompleted}/{workspace.pitchDeck.length} complete
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                {pitchCompleted}/{workspace.pitchDeck.length} complete
+              </span>
+              <Link href="/dashboard/funding/pitch-deck" className="rounded-lg border border-green-700 px-2.5 py-1 text-xs font-bold text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30">Open generator</Link>
+            </div>
           </div>
 
           <div className="space-y-2 mt-4 max-h-[360px] overflow-y-auto pr-1">

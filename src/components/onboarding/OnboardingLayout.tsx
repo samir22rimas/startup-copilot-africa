@@ -18,7 +18,7 @@ const initialData: OnboardingInput = {
   countryCode: "",
   city: "",
   industry: "",
-  estimatedBudgetUsd: 50000,
+  estimatedBudgetUsd: 0,
   projectTitle: "",
   projectDescription: "",
   targetAudience: "",

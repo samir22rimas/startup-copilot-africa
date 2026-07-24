@@ -44,6 +44,8 @@ export async function generateTextWithFallback(
     }
   }
 
+  throw new Error("All configured AI providers failed to return a response.", { cause: lastError })
+
   return `{
   "feedback": "Thanks for sharing that. I’m keeping the conversation moving while the AI provider is temporarily unavailable.",
   "nextQuestion": "What problem are you solving for your first customers, and why is it urgent for them right now?",

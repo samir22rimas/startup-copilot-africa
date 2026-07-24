@@ -93,41 +93,7 @@ const DEFAULT_PITCH_DECK: PitchDeckItem[] = [
   },
 ];
 
-const DEFAULT_OPPORTUNITIES: FundingOpportunity[] = [
-  {
-    name: "Tony Elumelu Foundation (TEF) Entrepreneurship Programme",
-    type: "Grant",
-    amountRange: "$5,000 (Non-dilutive seed capital)",
-    focus:
-      "All sectors, early-stage African startups with commercial potential.",
-    link: "https://www.tonyelumelufoundation.org",
-    deadline: "Q1 annually",
-  },
-  {
-    name: "Google for Startups Accelerator: Africa",
-    type: "Equity-Free Accelerator",
-    amountRange: "$100,000+ in Google Cloud Credits & Mentorship",
-    focus: "Tech startups solving regional challenges in Africa.",
-    link: "https://startup.google.com/accelerator/africa",
-    deadline: "Rolling / Seasonal",
-  },
-  {
-    name: "Savanna VC (Pre-seed Fund)",
-    type: "Equity Investment",
-    amountRange: "$50,000 - $150,000",
-    focus: "Fintech, Logistics, Agtech, Healthtech builders across SSA.",
-    link: "https://savanna.vc",
-    deadline: "Open year-round",
-  },
-  {
-    name: "Launch Africa Ventures",
-    type: "Seed Fund",
-    amountRange: "$100,000 - $250,000",
-    focus: "B2B and B2B2C early-stage digital tech startups across Africa.",
-    link: "https://launch.africa",
-    deadline: "Open year-round",
-  },
-];
+const DEFAULT_OPPORTUNITIES: FundingOpportunity[] = []
 
 export async function generateFundingWorkspace(
   projectId: string,
@@ -147,7 +113,7 @@ export async function generateFundingWorkspace(
 
   const { data: startup } = await supabase
     .from("startups")
-    .select("id, name, estimated_budget_cents, budget_currency")
+    .select("id, name, estimated_budget_cents, budget_currency, city, country_code")
     .eq("owner_id", user.id)
     .maybeSingle();
   if (!startup)
@@ -155,7 +121,7 @@ export async function generateFundingWorkspace(
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, metadata")
+    .select("id, title, description, target_audience, metadata")
     .eq("id", projectId)
     .eq("startup_id", startup.id)
     .maybeSingle();
@@ -163,32 +129,61 @@ export async function generateFundingWorkspace(
     return { success: false, error: "This project is not available to you." };
 
   const budgetDollars = (startup.estimated_budget_cents || 0) / 100;
+  const currency = startup.budget_currency || "USD";
+
+  const systemPrompt = `You are an expert Startup Advisor and VC for African startups.
+Generate a realistic funding projection and opportunity list for this startup.
+Return ONLY valid JSON matching this exact structure:
+{
+  "monthlyBurn": 1500,
+  "fundingGoal": 50000,
+  "valuation": 500000,
+  "dilutionPercent": 10,
+  "opportunities": [
+    { "name": "Google for Startups Accelerator: Africa", "type": "Accelerator", "amountRange": "$100k equity-free", "focus": "Tech startups", "link": "https://startup.google.com", "deadline": "Rolling" },
+    ... exactly 3 highly relevant real-world African funding opportunities (Grants, VCs, Accelerators)
+  ],
+  "recommendations": [
+    { "title": "...", "detail": "..." },
+    ... exactly 2 actionable fundraising recommendations
+  ]
+}
+
+Context:
+Startup: ${startup.name}
+Location: ${startup.city || "Unknown"}, ${startup.country_code || "Africa"}
+Budget: ${budgetDollars} ${currency}
+Project: ${project.title}
+Description: ${project.description || "N/A"}
+Audience: ${project.target_audience || "N/A"}`
+
+  let aiData: Partial<FundingWorkspace> = {}
+  try {
+    const { generateTextWithFallback } = await import("@/src/lib/ai-providers")
+    const response = await generateTextWithFallback(systemPrompt, [], { maxTokens: 1500, temperature: 0.6 })
+    const jsonMatch = response.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      aiData = JSON.parse(jsonMatch[0])
+    }
+  } catch (error: any) {
+    console.error("Failed to generate funding workspace with AI", error)
+    return { success: false, error: "The AI could not generate funding details. Please check your AI provider configuration. Details: " + (error.message || "Unknown error") }
+  }
+
+  if (aiData.monthlyBurn === undefined || !aiData.opportunities) {
+    return { success: false, error: "The AI returned incomplete funding details. Please try again." }
+  }
 
   const workspace: FundingWorkspace = {
     generatedAt: new Date().toISOString(),
-    cashBalance: budgetDollars || 5000,
-    monthlyBurn: Math.round((budgetDollars || 5000) / 6) || 800,
-    fundingGoal: 50000,
-    valuation: 350000,
-    dilutionPercent: 12.5,
+    cashBalance: budgetDollars,
+    monthlyBurn: aiData.monthlyBurn,
+    fundingGoal: aiData.fundingGoal || 0,
+    valuation: aiData.valuation || 0,
+    dilutionPercent: aiData.dilutionPercent || 0,
     pitchDeck: DEFAULT_PITCH_DECK,
-    opportunities: DEFAULT_OPPORTUNITIES,
-    recommendations: [
-      {
-        title: "Structure capital ask based on local milestones",
-        detail: `Aim to raise 50,000 ${startup.budget_currency || "USD"} in Pre-Seed funding. This capital should fund 18 months of runway to validate your initial target audience, set up local merchant payment flows, and reach positive unit economics.`,
-      },
-      {
-        title: "Tailor pitch story to operational realities",
-        detail:
-          "Focus on highlighting how your solution solves local infrastructure hurdles, payment frictions, or distribution challenges that international platforms fail to address.",
-      },
-      {
-        title: "Leverage regional networks & local angel groups",
-        detail:
-          "Before pitching institutional funds, target local angel networks (e.g. Cairo Angels, Jozi Angels, Nairobi Angels) for early support and validation.",
-      },
-    ],
+    opportunities: aiData.opportunities,
+    recommendations: aiData.recommendations || [],
   };
 
   const metadata =

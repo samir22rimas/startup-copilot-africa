@@ -20,7 +20,14 @@ function getField(formData: FormData, field: string) {
 
 async function getOrigin() {
   const requestHeaders = await headers()
-  return requestHeaders.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  const origin = requestHeaders.get("origin")
+  if (origin && origin !== "null") return origin
+
+  const host = requestHeaders.get("host")
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http"
+  if (host) return `${proto}://${host}`
+
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
 }
 
 function getAuthErrorMessage(error: { message?: string } | null | undefined) {
@@ -85,12 +92,21 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
 
 export async function signInWithGoogle() {
   const supabase = await createSupabaseServerClient()
+  const origin = await getOrigin()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${await getOrigin()}/auth/callback?next=/dashboard` },
+    options: {
+      redirectTo: `${origin}/auth/callback?next=/dashboard`,
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
   })
 
-  if (error || !data.url) redirect("/sign-in?error=oauth")
+  if (error || !data.url) {
+    console.error("Google signInWithOAuth error:", error)
+    redirect("/sign-in?error=oauth")
+  }
   redirect(data.url)
 }
 

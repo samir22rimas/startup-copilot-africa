@@ -112,9 +112,7 @@ export async function generateResultsWorkspace(projectId: string): Promise<{ suc
     .maybeSingle()
   if (!project) return { success: false, error: "This project is not available to you." }
 
-  const workspace: ResultsWorkspace = {
-    generatedAt: new Date().toISOString(),
-    documents: await createAiDocuments({
+  const generatedDocuments = await createAiDocuments({
       name: startup.name,
       city: startup.city || "your city",
       country: startup.country_code,
@@ -124,18 +122,9 @@ export async function generateResultsWorkspace(projectId: string): Promise<{ suc
       title: project.title,
       description: project.description || "",
       audience: project.target_audience || "",
-    }) || createDocuments({
-      name: startup.name,
-      city: startup.city || "your city",
-      country: startup.country_code,
-      industry: startup.industry || "your industry",
-      budget: (startup.estimated_budget_cents || 0) / 100,
-      currency: startup.budget_currency || "USD",
-      title: project.title,
-      description: project.description || "",
-      audience: project.target_audience || "",
-    }),
-  }
+    })
+  if (!generatedDocuments) return { success: false, error: "The AI could not generate complete documents. Check your provider configuration and try again." }
+  const workspace: ResultsWorkspace = { generatedAt: new Date().toISOString(), documents: generatedDocuments }
 
   const metadata = project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata)
     ? project.metadata

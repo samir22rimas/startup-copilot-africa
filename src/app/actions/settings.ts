@@ -8,7 +8,9 @@ export async function updateUserSettings(formData: {
   fullName: string
   phone: string
   city: string
+  countryCode?: string
   timezone: string
+  avatarUrl?: string
 }) {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,7 +22,9 @@ export async function updateUserSettings(formData: {
     full_name: formData.fullName || null,
     phone: formData.phone || null,
     city: formData.city || null,
+    country_code: formData.countryCode || null,
     timezone: formData.timezone || "UTC",
+    avatar_url: formData.avatarUrl || null,
   })
 
   if (!result) {

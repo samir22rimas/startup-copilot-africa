@@ -10,7 +10,9 @@ interface SettingsFormProps {
     fullName: string
     phone: string
     city: string
+    countryCode: string
     timezone: string
+    avatarUrl: string
   }
   startup: {
     name: string
@@ -25,11 +27,31 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
   const [fullName, setFullName] = React.useState(user.fullName)
   const [phone, setPhone] = React.useState(user.phone)
   const [city, setCity] = React.useState(user.city)
+  const [countryCode, setCountryCode] = React.useState(user.countryCode)
   const [timezone, setTimezone] = React.useState(user.timezone)
+  const [avatarUrl, setAvatarUrl] = React.useState(user.avatarUrl)
 
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [error, setError] = React.useState("")
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be smaller than 2MB")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -38,7 +60,7 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
     setSaved(false)
 
     try {
-      await updateUserSettings({ fullName, phone, city, timezone })
+      await updateUserSettings({ fullName, phone, city, countryCode, timezone, avatarUrl })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err: any) {
@@ -58,7 +80,7 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
           </div>
           <div>
             <h2 className="font-semibold text-zinc-900 dark:text-white">Personal Information</h2>
-            <p className="text-xs text-zinc-500">Update your founder profile details.</p>
+            <p className="text-xs text-zinc-500">Update your founder profile details & avatar photo.</p>
           </div>
         </div>
 
@@ -73,6 +95,35 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
             <Check className="size-4 text-green-600" /> Settings updated successfully!
           </div>
         )}
+
+        {/* Profile Avatar Upload */}
+        <div className="mt-6 flex items-center gap-5">
+          <div className="relative flex size-20 items-center justify-center overflow-hidden rounded-full border-2 border-green-600 bg-zinc-100 dark:bg-zinc-800">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
+            ) : (
+              <User className="size-8 text-zinc-400" />
+            )}
+          </div>
+          <div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            >
+              Upload Photo
+            </button>
+            <p className="mt-1 text-[11px] text-zinc-400">JPG, PNG or GIF. Max size 2MB.</p>
+          </div>
+        </div>
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           <div>
@@ -115,6 +166,29 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="e.g. Nairobi"
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Country Code (2 Letters)</label>
+            <input
+              type="text"
+              maxLength={2}
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
+              placeholder="e.g. KE, NG, ZA"
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm uppercase outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Timezone</label>
+            <input
+              type="text"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="e.g. Africa/Nairobi"
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
             />
           </div>

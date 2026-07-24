@@ -20,9 +20,9 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
           value={value}
           min={min}
           max={max}
-          className="absolute w-full h-2 appearance-none bg-blue-100 rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-700 [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10"
+          className="absolute w-full h-2 appearance-none bg-muted rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10"
           style={{
-            background: `linear-gradient(to right, #15803d ${percentage}%, #dbeafe ${percentage}%)`
+            background: `linear-gradient(to right, var(--primary) ${percentage}%, var(--muted) ${percentage}%)`
           }}
           {...props}
         />

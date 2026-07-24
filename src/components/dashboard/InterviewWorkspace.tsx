@@ -1,7 +1,7 @@
 "use client"
 
 import { getOrCreateInterviewConversation, submitInterviewAnswer } from "@/src/app/actions/interview"
-import { ArrowRight, CheckCircle2, Loader2, Send, Sparkles } from "lucide-react"
+import { ArrowRight, CheckCircle2, Loader2, LoaderPinwheel, Send, Sparkles } from "lucide-react"
 import * as React from "react"
 
 interface Message {
@@ -133,7 +133,7 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
           {submitting && (
             <div className="flex justify-start animate-pulse">
               <div className="flex items-center gap-2 max-w-[80%] rounded-2xl bg-zinc-50 dark:bg-zinc-800 px-5 py-3.5 text-xs text-zinc-400 font-medium">
-                <Loader2 className="size-4 animate-spin text-green-700" />
+                <span className="size-4 animate-pulse text-green-700" />
                 Thinking...
               </div>
             </div>

@@ -31,7 +31,9 @@ export default async function SettingsPage() {
           fullName: profile?.full_name || "",
           phone: profile?.phone || "",
           city: profile?.city || "",
-          timezone: profile?.timezone || "UTC",
+          countryCode: profile?.country_code || "",
+          timezone: profile?.timezone || "Africa/Casablanca",
+          avatarUrl: profile?.avatar_url || "",
         }}
         startup={startup ? {
           name: startup.name,

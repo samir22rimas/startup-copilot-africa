@@ -473,7 +473,7 @@ export function DashboardWorkspace({
           {copilotLoading && (
             <div className="flex justify-start animate-pulse">
               <div className="flex items-center gap-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 p-3.5 text-xs text-zinc-400 font-medium">
-                <Loader2 className="size-4 animate-spin text-green-700" />
+                <span className="size-4 animate-bounce rounded-full  bg-green-700" />
                 Thinking...
               </div>
             </div>

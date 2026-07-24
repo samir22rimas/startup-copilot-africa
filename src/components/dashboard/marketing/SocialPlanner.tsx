@@ -5,12 +5,23 @@ import * as React from "react"
 import { useMarketing, type SocialEvent } from "./MarketingContext"
 
 const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
-const dates = [21, 22, 23, 24, 25, 26, 27]
+function getWeekDates() {
+  const today = new Date()
+  const mondayOffset = (today.getDay() + 6) % 7
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - mondayOffset)
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    return date.getDate()
+  })
+}
 
 export function SocialPlanner() {
   const { events } = useMarketing()
   const [view, setView] = React.useState<"Week" | "Month">("Week")
   const [selectedEvent, setSelectedEvent] = React.useState<SocialEvent | null>(null)
+  const dates = getWeekDates()
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm h-[400px] flex flex-col">
@@ -48,8 +59,8 @@ export function SocialPlanner() {
           {dates.map((date) => {
             const dayEvents = events.filter((e) => e.day === date)
             return (
-              <div key={date} className={`p-2 border-r border-zinc-200 dark:border-zinc-800 last:border-r-0 relative min-h-[120px] ${date === 23 ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
-                <div className={`text-xs font-medium mb-2 ${date === 23 ? 'text-green-700 dark:text-green-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              <div key={date} className={`p-2 border-r border-zinc-200 dark:border-zinc-800 last:border-r-0 relative min-h-[120px] ${date === new Date().getDate() ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
+                <div className={`text-xs font-medium mb-2 ${date === new Date().getDate() ? 'text-green-700 dark:text-green-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'}`}>
                   {date}
                 </div>
                 

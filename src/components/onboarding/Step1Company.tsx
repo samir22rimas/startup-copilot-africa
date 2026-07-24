@@ -14,7 +14,7 @@ interface Step1CompanyProps {
 }
 
 export function Step1Company({ data, onChange, onNext }: Step1CompanyProps) {
-  const budget = data.estimatedBudgetUsd ?? 50000
+  const budget = data.estimatedBudgetUsd ?? 0
 
   const formattedBudget = new Intl.NumberFormat('en-US', {
     style: 'currency',

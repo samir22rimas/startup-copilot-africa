@@ -17,20 +17,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
-const projects = ["Project Alpha", "Project Beta", "Startup Copilot"];
-
 const navItems = [
   { icon: Home, label: "Overview", href: "/dashboard" },
   { icon: FileText, label: "Results", href: "/dashboard/results" },
   { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
   { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
   { icon: CircleDollarSign, label: "Funding", href: "/dashboard/funding" },
+  { icon: HelpCircle, label: "User Guide", href: "/dashboard/guide" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ projects }: { projects: Array<{ id: string; title: string }> }) {
   const pathname = usePathname();
-  const [activeProject, setActiveProject] = React.useState(projects[0]);
+  const [activeProject, setActiveProject] = React.useState(projects[0]?.title ?? "No project selected");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] =
     React.useState(false);
 
@@ -74,15 +73,15 @@ export function Sidebar() {
                 <div className="absolute left-0 right-0 top-12 md:top-14 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden py-1">
                   {projects.map((project) => (
                     <button
-                      key={project}
+                      key={project.id}
                       onClick={() => {
-                        setActiveProject(project);
+                        setActiveProject(project.title);
                         setIsProjectDropdownOpen(false);
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
                     >
-                      {project}
-                      {activeProject === project && (
+                      {project.title}
+                      {activeProject === project.title && (
                         <Check className="w-4 h-4 text-green-600" />
                       )}
                     </button>
@@ -92,10 +91,10 @@ export function Sidebar() {
             )}
           </div>
 
-          {/* Compact help button, mobile only — full version lives in the bottom panel on desktop */}
-          <button className="md:hidden shrink-0 p-2.5 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">
+          {/* Compact help button, mobile only */}
+          <Link href="/dashboard/guide" className="md:hidden shrink-0 p-2.5 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">
             <HelpCircle className="w-5 h-5" />
-          </button>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -183,9 +182,9 @@ export function Sidebar() {
           </button>
         </div>
 
-        <button className="flex items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50 mt-4 px-2 transition-colors duration-300">
+        <Link href="/dashboard/guide" className="flex items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50 mt-4 px-2 transition-colors duration-300">
           <HelpCircle className="w-4 h-4" /> Help & Support
-        </button>
+        </Link>
       </div>
     </aside>
   );

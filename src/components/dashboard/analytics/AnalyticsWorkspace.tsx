@@ -37,24 +37,19 @@ interface AnalyticsWorkspaceProps {
 
 export function AnalyticsWorkspace({ projectId, startup, initialWorkspace }: AnalyticsWorkspaceProps) {
   const router = useRouter()
-  const [workspace, setWorkspace] = React.useState<AnalyticsWorkspaceData | null>(initialWorkspace)
+  const [workspace, setWorkspace] = React.useState<AnalyticsWorkspaceData | null>(initialWorkspace?.source === "tracked" ? initialWorkspace : null)
   const [isGenerating, setIsGenerating] = React.useState(false)
-
-  // Auto-generate workspace metrics on mount if none exist
-  React.useEffect(() => {
-    if (!workspace) {
-      handleGenerate()
-    }
-  }, [workspace])
+  const [error, setError] = React.useState("")
 
   async function handleGenerate() {
     setIsGenerating(true)
+    setError("")
     try {
       const res = await generateAnalyticsWorkspace(projectId)
       if (res.success) {
         setWorkspace(res.workspace)
         router.refresh()
-      }
+      } else setError(res.error)
     } catch (err) {
       console.error("Failed to generate analytics workspace", err)
     } finally {
@@ -65,10 +60,12 @@ export function AnalyticsWorkspace({ projectId, startup, initialWorkspace }: Ana
   if (!workspace) {
     return (
       <div className="flex h-[60vh] items-center justify-center flex-col gap-4 text-center">
-        <RefreshCw className="h-8 w-8 text-green-700 animate-spin" />
+        <BarChart3 className="h-8 w-8 text-green-700" />
         <div>
-          <h2 className="text-xl font-bold text-zinc-950 dark:text-white">Generating Analytics Workspace</h2>
-          <p className="mt-2 text-sm text-zinc-500">Calculating conversion funnel and localized payment splits...</p>
+          <h2 className="text-xl font-bold text-zinc-950 dark:text-white">Analytics needs real event data</h2>
+          <p className="mt-2 max-w-lg text-sm text-zinc-500">No figures are shown until acquisition, customer, revenue, and payment events are connected or imported for this project.</p>
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          <button onClick={handleGenerate} disabled={isGenerating} className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 disabled:opacity-60"><RefreshCw className={`size-4 ${isGenerating ? "animate-spin" : ""}`} /> Check connection</button>
         </div>
       </div>
     )

@@ -207,6 +207,22 @@
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Keep theme changes calm without animating layout-affecting properties. */
+  body,
+  body * {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    body * {
+      transition-duration: 0ms !important;
+    }
   }
 
 }

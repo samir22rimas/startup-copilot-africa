@@ -11,6 +11,7 @@ import {
   Menu,
   Target,
 } from "lucide-react"
+import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
 
 const features = [
   {
@@ -38,7 +39,7 @@ const steps = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8fbf8] text-zinc-950 font-sans">
+    <main className="min-h-screen overflow-hidden bg-[#f8fbf8] dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 font-sans">
       <section className="relative isolate overflow-hidden bg-[#082b22] text-white">
         <div className="absolute inset-0 -z-10 opacity-70 [background-image:radial-gradient(circle_at_20%_0%,rgba(74,222,128,.24),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(59,130,246,.2),transparent_25%)]" />
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -52,8 +53,12 @@ export default function Home() {
               <a href="#features" className="relative py-1 transition-colors hover:text-white after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-green-300 after:transition-all hover:after:w-full">Features</a>
               <Link href="/sign-in" className="relative py-1 transition-colors hover:text-white after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-green-300 after:transition-all hover:after:w-full">Sign in</Link>
               <Link href="/sign-up" className="rounded-full bg-white px-5 py-2 font-semibold text-[#0b3b2f] shadow-md transition-all duration-300 hover:bg-green-100 hover:shadow-lg hover:shadow-white/10 hover:scale-[1.04]">Get started</Link>
+              <ThemeToggle />
             </nav>
-            <Link href="/sign-up" className="flex size-10 items-center justify-center rounded-lg border border-white/20 md:hidden transition-all hover:bg-white/10" aria-label="Get started"><Menu className="size-5" /></Link>
+            <div className="flex items-center gap-2 md:hidden">
+              <ThemeToggle />
+              <Link href="/sign-up" className="flex size-10 items-center justify-center rounded-lg border border-white/20 transition-all hover:bg-white/10" aria-label="Get started"><Menu className="size-5" /></Link>
+            </div>
           </header>
 
           <div className="grid items-center gap-14 pb-24 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-20">
@@ -96,37 +101,37 @@ export default function Home() {
 
       <section id="features" className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
         <div className="max-w-2xl">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-green-700">Built for momentum</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">Everything you need to turn an idea into informed action.</h2>
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-green-700 dark:text-green-400">Built for momentum</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">Everything you need to turn an idea into informed action.</h2>
         </div>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {features.map(({ icon: Icon, title, description }) => (
-            <article key={title} className="group rounded-3xl border border-green-100 bg-white p-7 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(8,43,34,0.05)] hover:border-green-200">
-              <span className="flex size-11 items-center justify-center rounded-2xl bg-green-100 text-green-800 transition-all duration-300 group-hover:bg-[#082b22] group-hover:text-green-300">
+            <article key={title} className="group rounded-3xl border border-green-100 bg-card p-7 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(8,43,34,0.05)] hover:border-green-200 dark:border-green-900/40 dark:hover:border-green-700">
+              <span className="flex size-11 items-center justify-center rounded-2xl bg-green-100 text-green-800 transition-all duration-300 group-hover:bg-[#082b22] group-hover:text-green-300 dark:bg-green-950/50 dark:text-green-300">
                 <Icon className="size-5 transition-transform duration-500 group-hover:scale-110" />
               </span>
-              <h3 className="mt-6 text-lg font-semibold text-zinc-900 group-hover:text-green-950 transition-colors duration-300">{title}</h3>
-              <p className="mt-3 leading-7 text-zinc-600">{description}</p>
+              <h3 className="mt-6 text-lg font-semibold text-zinc-900 dark:text-zinc-50 group-hover:text-green-950 dark:group-hover:text-green-300 transition-colors duration-300">{title}</h3>
+              <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y border-green-100 bg-[#eaf5ee]">
+      <section id="how-it-works" className="border-y border-green-100 bg-[#eaf5ee] dark:border-green-900/40 dark:bg-green-950/20">
         <div className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="max-w-xl">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-green-700">A practical process</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">Less guessing. More progress.</h2>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-green-700 dark:text-green-400">A practical process</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">Less guessing. More progress.</h2>
             </div>
-            <p className="max-w-sm leading-7 text-zinc-600">A guided workspace that meets you where you are and helps you identify the next best move.</p>
+            <p className="max-w-sm leading-7 text-zinc-600 dark:text-zinc-400">A guided workspace that meets you where you are and helps you identify the next best move.</p>
           </div>
           <div className="mt-14 grid gap-8 md:grid-cols-3">
             {steps.map(([number, title, description]) => (
               <article key={number} className="group border-t-2 border-green-700/30 pt-5 transition-all duration-500 hover:border-green-700">
                 <span className="text-sm font-bold text-green-700/70 transition-colors duration-300 group-hover:text-green-700">{number}</span>
-                <h3 className="mt-5 text-xl font-semibold text-zinc-900 transition-colors duration-300 group-hover:text-green-900">{title}</h3>
-                <p className="mt-3 leading-7 text-zinc-600">{description}</p>
+                <h3 className="mt-5 text-xl font-semibold text-zinc-900 dark:text-zinc-50 transition-colors duration-300 group-hover:text-green-900 dark:group-hover:text-green-300">{title}</h3>
+                <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
               </article>
             ))}
           </div>
@@ -150,12 +155,14 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-green-100 bg-[#fbfdfb] px-6 py-10 text-sm text-zinc-500">
+      <footer className="border-t border-green-100 bg-[#fbfdfb] px-6 py-10 text-sm text-zinc-500 dark:border-green-900/40 dark:bg-zinc-950 dark:text-zinc-400">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 sm:flex-row items-center">
-          <p>© {new Date().getFullYear()} Startup Copilot Africa</p>
-          <div className="flex gap-6">
+          <p>© {new Date().getFullYear()} Startup Copilot Africa. All rights reserved.</p>
+          <div className="flex flex-wrap gap-6 items-center">
+            <Link href="/terms" className="hover:text-green-800 transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-green-800 transition-colors">Privacy Policy</Link>
             <Link href="/sign-in" className="hover:text-green-800 transition-colors">Sign in</Link>
-            <Link href="/sign-up" className="hover:text-green-800 transition-colors">Get started</Link>
+            <Link href="/sign-up" className="hover:text-green-800 transition-colors font-medium">Get started</Link>
           </div>
         </div>
       </footer>
