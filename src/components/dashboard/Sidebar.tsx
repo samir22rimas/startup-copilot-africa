@@ -10,6 +10,8 @@ import {
   HelpCircle,
   Home,
   Megaphone,
+  Plus,
+  Scale,
   Settings,
   Zap,
 } from "lucide-react";
@@ -23,6 +25,7 @@ const navItems = [
   { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
   { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
   { icon: CircleDollarSign, label: "Funding", href: "/dashboard/funding" },
+  { icon: Scale, label: "Legality", href: "/dashboard/legal" },
   { icon: HelpCircle, label: "User Guide", href: "/dashboard/guide" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
@@ -86,6 +89,15 @@ export function Sidebar({ projects }: { projects: Array<{ id: string; title: str
                       )}
                     </button>
                   ))}
+                  <div className="border-t border-zinc-100 dark:border-zinc-800 mt-1 pt-1">
+                    <Link
+                      href="/dashboard/new"
+                      onClick={() => setIsProjectDropdownOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Create New Business
+                    </Link>
+                  </div>
                 </div>
               </>
             )}

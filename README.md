@@ -192,12 +192,12 @@ http://localhost:3000
 
 # Environment Variables
 
-| Variable | Description |
-|-----------|-------------|
-| OPENAI_API_KEY | OpenAI API key |
-| NEXT_PUBLIC_SUPABASE_URL | Supabase project URL |
-| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase public anonymous key |
-| SUPABASE_SERVICE_ROLE_KEY | Server-side Supabase access (if applicable) |
+| Variable                      | Description                                 |
+| ----------------------------- | ------------------------------------------- |
+| OPENAI_API_KEY                | OpenAI API key                              |
+| NEXT_PUBLIC_SUPABASE_URL      | Supabase project URL                        |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase public anonymous key               |
+| SUPABASE_SERVICE_ROLE_KEY     | Server-side Supabase access (if applicable) |
 
 ---
 
@@ -331,4 +331,4 @@ By combining artificial intelligence with localized business knowledge, we help 
 
 # License
 
-This project was developed as part of the **OpenAI Startup in Africa Hackathon 2026**.
+This project was developed as part of the **OpenAI Hackathon 2026**.

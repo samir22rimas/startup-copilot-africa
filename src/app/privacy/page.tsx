@@ -74,7 +74,9 @@ export default function PrivacyPage() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link href="/" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-green-100 backdrop-blur-sm transition-all hover:bg-white/20">
-              <ArrowLeft className="size-3.5" /> Back to Home
+              <ArrowLeft className="size-3.5 " /><span className="max-sm:hidden">
+                Back to Home
+                </span> 
             </Link>
           </div>
         </div>

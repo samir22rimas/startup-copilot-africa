@@ -25,11 +25,11 @@ export default async function DashboardLayout({
   const userInitial = (userDisplayName[0] || "U").toUpperCase();
 
   return (
-    <div className="flex flex-col h-screen bg-background font-sans overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-background font-sans">
       <TopNav user={{ avatarUrl: profile?.avatar_url || undefined, initial: userInitial, name: userDisplayName }} />
-      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="flex flex-1 flex-col md:flex-row">
         <Sidebar projects={projects.map((project) => ({ id: project.id, title: project.title }))} />
-        <main className="flex-1 overflow-y-auto bg-muted/40 p-4 sm:p-6 md:p-8">
+        <main className="flex-1 min-w-0 bg-muted/40 p-4 sm:p-6 md:p-8 md:h-[calc(100vh-4rem)] md:overflow-y-auto">
           {children}
         </main>
       </div>
