@@ -82,6 +82,7 @@ export interface DashboardOverview {
   healthLabel: string
   healthFootnote: string
   focusIndicators: FocusIndicator[]
+  weeklyFocus: import("@/src/lib/focus-plan").WeeklyFocusPlan | null
   recommendations: DashboardRecommendation[]
   documents: DashboardDocument[]
   quickActions: DashboardQuickAction[]
@@ -103,6 +104,7 @@ function calculateHealthScore(
   documents: any[],
   insights: any[],
   tracked?: import("@/src/lib/data-truth").TrackedMetrics | null,
+  weeklyFocus?: import("@/src/lib/focus-plan").WeeklyFocusPlan | null,
 ) {
   let score = 20
 
@@ -119,9 +121,15 @@ function calculateHealthScore(
 
   // Bonus only when founder has logged real operating numbers
   if (tracked?.updatedAt) {
-    if (tracked.monthlyRevenue > 0 || tracked.activeCustomers > 0) score += 10
-    if (tracked.monthlyBurn > 0) score += 5
-    if (tracked.visitorsThisMonth > 0) score += 5
+    if (tracked.monthlyRevenue > 0 || tracked.activeCustomers > 0) score += 8
+    if (tracked.monthlyBurn > 0) score += 4
+    if (tracked.visitorsThisMonth > 0) score += 4
+  }
+
+  if (weeklyFocus?.priorities?.length) {
+    const done = weeklyFocus.priorities.filter((p) => p.done).length
+    score += Math.round((done / weeklyFocus.priorities.length) * 10)
+    if (weeklyFocus.checkIn?.completedAt) score += 5
   }
 
   return Math.min(100, Math.max(0, score))
@@ -529,10 +537,12 @@ Description: ${project.description || "N/A"}`
       : {}
 
   const { readTrackedMetrics, readMarketingWorkspace, hasTrackedMetrics } = await import("@/src/lib/data-truth")
+  const { ensureWeeklyFocusPlan } = await import("@/src/app/actions/focus-plan")
 
   const trackedMetricsRaw = readTrackedMetrics(metadataBag, startup.budget_currency || "USD")
   const trackedMetrics = hasTrackedMetrics(trackedMetricsRaw) ? trackedMetricsRaw : null
   const marketingWorkspace = readMarketingWorkspace(metadataBag)
+  const weeklyFocus = await ensureWeeklyFocusPlan(project.id)
 
   const healthScore = calculateHealthScore(
     startup,
@@ -541,6 +551,7 @@ Description: ${project.description || "N/A"}`
     documents || [],
     insights || [],
     trackedMetrics,
+    weeklyFocus,
   )
 
   const overview: DashboardOverview = {
@@ -550,6 +561,7 @@ Description: ${project.description || "N/A"}`
       ? "Score blends onboarding progress, milestones, and your tracked operating metrics"
       : "Score is derived from onboarding, milestones, and saved assets — log tracked metrics in Analytics to improve accuracy",
     focusIndicators: buildFocusIndicators(startup, project, tasks, trackedMetrics),
+    weeklyFocus,
     recommendations: buildRecommendations(startup, project, tasks, documents || [], insights || []),
     documents: buildDocuments(startup, project, documents || []),
     quickActions: buildQuickActions(startup, project),

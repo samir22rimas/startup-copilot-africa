@@ -2,6 +2,7 @@
 
 import type { DashboardDocument, DashboardQuickAction, DashboardRecommendation } from "@/src/app/actions/dashboard"
 import { addDashboardTask, sendStatefulCopilotMessage, toggleDashboardTask } from "@/src/app/actions/dashboard"
+import { WeeklyFocusCard } from "@/src/components/dashboard/WeeklyFocusCard"
 import {
   ArrowRight,
   Check,
@@ -20,7 +21,6 @@ import {
   Zap,
 } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import * as React from "react"
 
 interface Task {
@@ -51,7 +51,6 @@ export function DashboardWorkspace({
   initialMessages: Message[]
   overview: any
 }) {
-  const router = useRouter()
   const [tasks, setTasks] = React.useState<Task[]>(initialTasks)
   const [newTaskTitle, setNewTaskTitle] = React.useState("")
   const [newTaskTag, setNewTaskTag] = React.useState("Custom")
@@ -62,22 +61,35 @@ export function DashboardWorkspace({
   const [copilotLoading, setCopilotLoading] = React.useState(false)
 
   const chatListRef = React.useRef<HTMLDivElement>(null)
-  const skipChatAutoScroll = React.useRef(true)
+  const shouldStickChat = React.useRef(false)
 
   const completed = tasks.filter((t) => t.done).length
   const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
   const healthScore = overview?.healthScore ?? 0
   const healthLabel = overview?.healthLabel ?? "Building"
+  const healthFootnote =
+    overview?.healthFootnote ??
+    "Score is derived from onboarding and milestones — not live market traction"
+  const focusIndicators = overview?.focusIndicators ?? []
+  const weeklyFocus = overview?.weeklyFocus ?? null
+  const trackedMetrics = overview?.trackedMetrics ?? null
   const recommendations: DashboardRecommendation[] = overview?.recommendations ?? []
   const documents: DashboardDocument[] = overview?.documents ?? []
   const quickActions: DashboardQuickAction[] = overview?.quickActions ?? []
 
   function scrollMainToCopilot() {
     const el = document.getElementById("copilot")
-    const scroller = el?.closest("main") || window
-    if (!el) return
+    const scroller = el?.closest("main")
+    if (!el || !(scroller instanceof HTMLElement)) return
 
-    el.scrollIntoView({ behavior: "smooth", block: "start" })
+    const top =
+      el.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop -
+      8
+
+    window.scrollTo(0, 0)
+    scroller.scrollTo({ top, behavior: "smooth" })
   }
 
   React.useEffect(() => {
@@ -88,24 +100,19 @@ export function DashboardWorkspace({
     setCopilotMessages(initialMessages)
   }, [initialMessages])
 
-  // Uniquement scroller la zone interne du chat, sans faire défiler la fenêtre
+  // Only scroll the chat panel after the user sends / gets a reply — never on refresh sync
   React.useEffect(() => {
+    if (!shouldStickChat.current) return
     const list = chatListRef.current
     if (!list) return
-
-    if (skipChatAutoScroll.current) {
-      skipChatAutoScroll.current = false
-      list.scrollTop = list.scrollHeight
-      return
-    }
-
-    list.scrollTo({ top: list.scrollHeight, behavior: "smooth" })
+    list.scrollTop = list.scrollHeight
+    if (!copilotLoading) shouldStickChat.current = false
   }, [copilotMessages, copilotLoading])
 
   async function handleToggle(taskId: string, currentStatus: boolean) {
     setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, done: !currentStatus } : t)))
     await toggleDashboardTask(project.id, taskId, !currentStatus)
-    router.refresh()
+    // Skip router.refresh() — optimistic UI is enough; refresh was resetting scroll
   }
 
   async function handleAddTask(e: React.FormEvent) {
@@ -119,7 +126,6 @@ export function DashboardWorkspace({
     setShowAddTask(false)
 
     await addDashboardTask(project.id, newTask.title, newTask.tag)
-    router.refresh()
   }
 
   async function handleAskCopilot(e: React.FormEvent) {
@@ -133,6 +139,7 @@ export function DashboardWorkspace({
       content: prompt,
     }
 
+    shouldStickChat.current = true
     setCopilotMessages((prev) => [...prev, userMsg])
     setQuestion("")
     setCopilotLoading(true)
@@ -147,7 +154,6 @@ export function DashboardWorkspace({
           content: reply,
         },
       ])
-      router.refresh()
     } catch (err) {
       console.error("Copilot error:", err)
     } finally {
@@ -184,23 +190,30 @@ export function DashboardWorkspace({
 
       {/* Progress & Focus Metrics */}
       <section className="grid gap-6 lg:grid-cols-12">
-        {/* Validation Score */}
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-green-900 via-green-900 to-emerald-950 p-6 sm:p-8 text-white shadow-lg lg:col-span-7 flex flex-col justify-between">
-          {/* Correction: overflow-hidden sur le parent empêche le blur de déborder */}
           <div className="absolute -right-8 -top-8 size-48 rounded-full bg-green-400/10 blur-xl pointer-events-none" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-sm space-y-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-green-300">
                 <TrendingUp className="size-5" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-green-200/80">Business Brief Validation</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-green-200/80">Workspace health</p>
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-green-100">
+                  Derived
+                </span>
+              </div>
               <h2 className="text-4xl font-extrabold tracking-tight">
-                {Math.min(100, progress + 44)}
+                {healthScore}
                 <span className="text-lg text-green-200 font-normal">/100</span>
               </h2>
-              <p className="text-xs text-green-100/70 leading-relaxed">
-                Onboarding completed for {startup.name}. Complete your active milestones below to validate your pricing hypothesis and local market setup.
-              </p>
+              <p className="text-xs text-green-100/70 leading-relaxed">{healthFootnote}</p>
+              {trackedMetrics && (
+                <p className="text-[11px] text-green-200/90">
+                  Includes tracked metrics: {trackedMetrics.activeCustomers} customers ·{" "}
+                  {trackedMetrics.monthlyRevenue} {trackedMetrics.currency} revenue/mo
+                </p>
+              )}
             </div>
             <div className="flex size-32 shrink-0 items-center justify-center rounded-full border-8 border-green-400/20 bg-white/5 text-center sm:self-center">
               <div>
@@ -211,49 +224,53 @@ export function DashboardWorkspace({
           </div>
         </div>
 
-        {/* Market Focus */}
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-5 space-y-5">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div>
-              <h3 className="font-bold text-zinc-900 dark:text-white text-base">Market Adaptation Focus</h3>
-              <p className="text-xs text-zinc-500">Key launch indicators</p>
+              <h3 className="font-bold text-zinc-900 dark:text-white text-base">Launch readiness signals</h3>
+              <p className="text-xs text-zinc-500">From your records — not invented percentages</p>
             </div>
             <Target className="size-5 text-green-600" />
           </div>
 
           <div className="space-y-4">
-            <div>
-              <div className="mb-1.5 flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                <span>Value Proposition Setup</span>
-                <span>80%</span>
+            {(focusIndicators.length > 0
+              ? focusIndicators
+              : [
+                  {
+                    label: "Milestone execution",
+                    value: progress,
+                    footnote: `${completed}/${tasks.length} complete`,
+                    source: "derived" as const,
+                  },
+                ]
+            ).map((indicator: { label: string; value: number; footnote: string; source: "derived" | "tracked" }) => (
+              <div key={indicator.label}>
+                <div className="mb-1.5 flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <span className="flex items-center gap-1.5">
+                    {indicator.label}
+                    <span className="rounded bg-zinc-100 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800">
+                      {indicator.source === "tracked" ? "Tracked" : "Derived"}
+                    </span>
+                  </span>
+                  <span>{indicator.value}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      indicator.source === "tracked" ? "bg-emerald-600" : "bg-green-500"
+                    }`}
+                    style={{ width: `${indicator.value}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-zinc-400">{indicator.footnote}</p>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div className="h-full rounded-full bg-green-500 transition-all duration-500" style={{ width: "80%" }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-1.5 flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                <span>Infrastructure & Mobile Money</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div className="h-full rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-1.5 flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                <span>Financial Budget Runway</span>
-                <span>35%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div className="h-full rounded-full bg-amber-400 transition-all duration-500" style={{ width: "35%" }} />
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
+
+      <WeeklyFocusCard projectId={project.id} initialPlan={weeklyFocus} />
 
       {/* Action Items List */}
       <section className="grid gap-6 lg:grid-cols-12">
@@ -270,13 +287,12 @@ export function DashboardWorkspace({
 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {tasks.map((task) => (
-              <label key={task.id} className="flex cursor-pointer items-start gap-4 py-3.5 first:pt-0 group">
-                <input
-                  type="checkbox"
-                  checked={task.done}
-                  onChange={() => handleToggle(task.id, task.done)}
-                  className="sr-only"
-                />
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => handleToggle(task.id, task.done)}
+                className="flex w-full cursor-pointer items-start gap-4 py-3.5 text-left first:pt-0 group"
+              >
                 <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-white transition ${
                   task.done 
                     ? "border-green-600 bg-green-600" 
@@ -293,7 +309,7 @@ export function DashboardWorkspace({
                   </span>
                 </div>
                 <ChevronRight className="size-4 text-zinc-300 transition-transform group-hover:translate-x-1 shrink-0 mt-1" />
-              </label>
+              </button>
             ))}
           </div>
 

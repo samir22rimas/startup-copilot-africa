@@ -14,7 +14,6 @@ import {
   Plus,
   Scale,
   Settings,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -213,25 +212,26 @@ export function Sidebar({
         </nav>
       </div>
 
-      {/* Upgrade to Pro — desktop only; keeps the mobile bar compact */}
-      <div className="hidden md:block p-4 mt-auto">
-        <div className="bg-linear-to-br from-green-600 to-green-800 rounded-2xl p-2 text-white shadow-lg shadow-green-900/20 relative overflow-hidden group transition-all duration-300 hover:shadow-xl hover:shadow-green-900/25 hover:scale-[1.02]">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-20 transition-opacity duration-300" />
-
-          <div className="flex items-center gap-2 mb-2 relative z-10">
-            <Zap className="w-4 h-4 text-green-200 fill-current animate-pulse" />
-            <h4 className="font-bold text-sm">Upgrade to Pro</h4>
+      {/* Helpful next action — no fake Upgrade CTA until billing ships */}
+      <div className="mt-auto hidden p-4 md:block">
+        <Link
+          href="/dashboard/documents"
+          className="block rounded-2xl border border-green-200 bg-green-50/80 p-4 transition hover:bg-green-50 dark:border-green-900/40 dark:bg-green-950/30 dark:hover:bg-green-950/50"
+        >
+          <div className="mb-1 flex items-center gap-2 text-green-800 dark:text-green-300">
+            <FolderOpen className="h-4 w-4" />
+            <h4 className="text-sm font-bold">Ground Copilot in your files</h4>
           </div>
-          <p className="text-xs text-green-100/80 mb-4 relative z-10 leading-relaxed">
-            Get unlimited AI content and advanced analytics.
+          <p className="text-xs leading-relaxed text-green-900/70 dark:text-green-200/70">
+            Upload a brief or research notes so advice uses your real materials.
           </p>
-          <button className="w-full bg-white text-green-800 text-xs font-bold py-2.5 rounded-lg hover:bg-green-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 relative z-10 shadow-sm">
-            Upgrade Now
-          </button>
-        </div>
+        </Link>
 
-        <Link href="/dashboard/guide" className="flex items-center gap-2 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50 mt-4 px-2 transition-colors duration-300">
-          <HelpCircle className="w-4 h-4" /> Help & Support
+        <Link
+          href="/dashboard/guide"
+          className="mt-4 flex items-center gap-2 px-2 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
+        >
+          <HelpCircle className="h-4 w-4" /> Help &amp; Support
         </Link>
       </div>
     </aside>

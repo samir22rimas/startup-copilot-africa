@@ -2,7 +2,18 @@
 
 import * as React from "react"
 import { User, Building2, Save, Loader2, Check } from "lucide-react"
-import { updateUserSettings } from "@/src/app/actions/settings"
+import { updateStartupSettings, updateUserSettings } from "@/src/app/actions/settings"
+import type { StartupStage } from "@/src/lib/database.types"
+import { useRouter } from "next/navigation"
+
+const STAGES: { value: StartupStage; label: string }[] = [
+  { value: "idea", label: "Idea" },
+  { value: "validation", label: "Validation" },
+  { value: "mvp", label: "MVP" },
+  { value: "early_revenue", label: "Early revenue" },
+  { value: "growth", label: "Growth" },
+  { value: "scale", label: "Scale" },
+]
 
 interface SettingsFormProps {
   user: {
@@ -17,13 +28,18 @@ interface SettingsFormProps {
   startup: {
     name: string
     industry: string
+    city: string
     countryCode: string
+    stage: StartupStage
     budgetCurrency: string
     estimatedBudgetCents: number
+    description: string
+    websiteUrl: string
   } | null
 }
 
 export function SettingsForm({ user, startup }: SettingsFormProps) {
+  const router = useRouter()
   const [fullName, setFullName] = React.useState(user.fullName)
   const [phone, setPhone] = React.useState(user.phone)
   const [city, setCity] = React.useState(user.city)
@@ -31,9 +47,24 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
   const [timezone, setTimezone] = React.useState(user.timezone)
   const [avatarUrl, setAvatarUrl] = React.useState(user.avatarUrl)
 
-  const [saving, setSaving] = React.useState(false)
-  const [saved, setSaved] = React.useState(false)
+  const [startupName, setStartupName] = React.useState(startup?.name ?? "")
+  const [industry, setIndustry] = React.useState(startup?.industry ?? "")
+  const [startupCity, setStartupCity] = React.useState(startup?.city ?? "")
+  const [startupCountry, setStartupCountry] = React.useState(startup?.countryCode ?? "")
+  const [stage, setStage] = React.useState<StartupStage>(startup?.stage ?? "idea")
+  const [budgetCurrency, setBudgetCurrency] = React.useState(startup?.budgetCurrency ?? "USD")
+  const [estimatedBudget, setEstimatedBudget] = React.useState(
+    String((startup?.estimatedBudgetCents ?? 0) / 100),
+  )
+  const [description, setDescription] = React.useState(startup?.description ?? "")
+  const [websiteUrl, setWebsiteUrl] = React.useState(startup?.websiteUrl ?? "")
+
+  const [savingProfile, setSavingProfile] = React.useState(false)
+  const [savingStartup, setSavingStartup] = React.useState(false)
+  const [savedProfile, setSavedProfile] = React.useState(false)
+  const [savedStartup, setSavedStartup] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [startupError, setStartupError] = React.useState("")
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -53,27 +84,60 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
     reader.readAsDataURL(file)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSaving(true)
+    setSavingProfile(true)
     setError("")
-    setSaved(false)
+    setSavedProfile(false)
 
     try {
       await updateUserSettings({ fullName, phone, city, countryCode, timezone, avatarUrl })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch (err: any) {
-      setError(err.message || "Failed to save settings.")
+      setSavedProfile(true)
+      router.refresh()
+      setTimeout(() => setSavedProfile(false), 3000)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save settings.")
     } finally {
-      setSaving(false)
+      setSavingProfile(false)
     }
+  }
+
+  async function handleStartupSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingStartup(true)
+    setStartupError("")
+    setSavedStartup(false)
+
+    const res = await updateStartupSettings({
+      name: startupName,
+      industry,
+      city: startupCity,
+      countryCode: startupCountry,
+      stage,
+      budgetCurrency,
+      estimatedBudget: Number(estimatedBudget) || 0,
+      description,
+      websiteUrl,
+    })
+
+    if (!res.success) {
+      setStartupError(res.error)
+      setSavingStartup(false)
+      return
+    }
+
+    setSavedStartup(true)
+    router.refresh()
+    setTimeout(() => setSavedStartup(false), 3000)
+    setSavingStartup(false)
   }
 
   return (
     <div className="space-y-8">
-      {/* Profile Section */}
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+      <form
+        onSubmit={handleProfileSubmit}
+        className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8"
+      >
         <div className="flex items-center gap-3 border-b border-zinc-100 pb-5 dark:border-zinc-800">
           <div className="flex size-10 items-center justify-center rounded-xl bg-green-100 text-green-700 dark:bg-green-950/50">
             <User className="size-5" />
@@ -90,13 +154,12 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
           </div>
         )}
 
-        {saved && (
+        {savedProfile && (
           <div className="mt-6 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-300">
-            <Check className="size-4 text-green-600" /> Settings updated successfully!
+            <Check className="size-4 text-green-600" /> Profile updated successfully!
           </div>
         )}
 
-        {/* Profile Avatar Upload */}
         <div className="mt-6 flex items-center gap-5">
           <div className="relative flex size-20 items-center justify-center overflow-hidden rounded-full border-2 border-green-600 bg-zinc-100 dark:bg-zinc-800">
             {avatarUrl ? (
@@ -126,131 +189,178 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
         </div>
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Email Address</label>
+          <Field label="Email Address">
             <input
               type="email"
               disabled
               value={user.email}
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-500 cursor-not-allowed dark:border-zinc-800 dark:bg-zinc-950"
+              className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950"
             />
             <p className="mt-1 text-[11px] text-zinc-400">Email cannot be changed directly.</p>
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Full Name</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="e.g. Samir Rimas"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Phone Number</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+254 700 000 000"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">City / Location</label>
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. Nairobi"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Country Code (2 Letters)</label>
-            <input
-              type="text"
-              maxLength={2}
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
-              placeholder="e.g. KE, NG, ZA"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm uppercase outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">Timezone</label>
-            <input
-              type="text"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              placeholder="e.g. Africa/Nairobi"
-              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
-            />
-          </div>
+          <TextField label="Full Name" value={fullName} onChange={setFullName} placeholder="e.g. Samir Rimas" />
+          <TextField label="Phone Number" value={phone} onChange={setPhone} placeholder="+254 700 000 000" />
+          <TextField label="City / Location" value={city} onChange={setCity} placeholder="e.g. Nairobi" />
+          <TextField
+            label="Country Code (2 Letters)"
+            value={countryCode}
+            onChange={(v) => setCountryCode(v.toUpperCase().slice(0, 2))}
+            placeholder="e.g. KE, NG, ZA"
+          />
+          <TextField label="Timezone" value={timezone} onChange={setTimezone} placeholder="e.g. Africa/Nairobi" />
         </div>
 
         <div className="mt-6 flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-6 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Saving...
-              </>
-            ) : (
-              <>
-                <Save className="size-4" /> Save Profile
-              </>
-            )}
-          </button>
+          <SaveButton saving={savingProfile} label="Save Profile" />
         </div>
       </form>
 
-      {/* Startup Details Card */}
       {startup && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+        <form
+          onSubmit={handleStartupSubmit}
+          className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8"
+        >
           <div className="flex items-center gap-3 border-b border-zinc-100 pb-5 dark:border-zinc-800">
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/50">
               <Building2 className="size-5" />
             </div>
             <div>
               <h2 className="font-semibold text-zinc-900 dark:text-white">Active Startup</h2>
-              <p className="text-xs text-zinc-500">Details configured during onboarding.</p>
+              <p className="text-xs text-zinc-500">
+                These fields drive Copilot, Legal, Funding, and Analytics — keep them accurate.
+              </p>
             </div>
           </div>
+
+          {startupError && (
+            <div className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
+              {startupError}
+            </div>
+          )}
+
+          {savedStartup && (
+            <div className="mt-6 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-300">
+              <Check className="size-4 text-green-600" /> Startup details updated — AI context refreshed.
+            </div>
+          )}
 
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            <div>
-              <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Startup Name</span>
-              <span className="mt-1 block text-base font-bold text-zinc-800 dark:text-zinc-100">{startup.name}</span>
-            </div>
+            <TextField label="Startup Name" value={startupName} onChange={setStartupName} placeholder="Your company" />
+            <TextField label="Industry / Sector" value={industry} onChange={setIndustry} placeholder="e.g. Fintech" />
+            <TextField label="City" value={startupCity} onChange={setStartupCity} placeholder="e.g. Lagos" />
+            <TextField
+              label="Country Code"
+              value={startupCountry}
+              onChange={(v) => setStartupCountry(v.toUpperCase().slice(0, 2))}
+              placeholder="NG"
+            />
 
-            <div>
-              <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Industry / Sector</span>
-              <span className="mt-1 block text-base font-bold text-zinc-800 dark:text-zinc-100">{startup.industry}</span>
-            </div>
+            <Field label="Stage">
+              <select
+                value={stage}
+                onChange={(e) => setStage(e.target.value as StartupStage)}
+                className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                {STAGES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-            <div>
-              <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Country Code</span>
-              <span className="mt-1 block text-base font-bold text-zinc-800 dark:text-zinc-100">{startup.countryCode}</span>
-            </div>
+            <TextField
+              label="Budget Currency"
+              value={budgetCurrency}
+              onChange={(v) => setBudgetCurrency(v.toUpperCase().slice(0, 8))}
+              placeholder="USD"
+            />
+            <TextField
+              label="Starting Budget (amount)"
+              value={estimatedBudget}
+              onChange={setEstimatedBudget}
+              placeholder="5000"
+            />
+            <TextField
+              label="Website URL"
+              value={websiteUrl}
+              onChange={setWebsiteUrl}
+              placeholder="https://..."
+            />
 
-            <div>
-              <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Starting Budget</span>
-              <span className="mt-1 block text-base font-bold text-zinc-800 dark:text-zinc-100">
-                {startup.estimatedBudgetCents / 100} {startup.budgetCurrency}
-              </span>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Short description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                placeholder="What you build, for whom, and where you operate…"
+                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+              />
             </div>
           </div>
-        </div>
+
+          <div className="mt-6 flex justify-end">
+            <SaveButton saving={savingStartup} label="Save Startup" />
+          </div>
+        </form>
       )}
     </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <Field label={label}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
+      />
+    </Field>
+  )
+}
+
+function SaveButton({ saving, label }: { saving: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={saving}
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-6 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-50"
+    >
+      {saving ? (
+        <>
+          <Loader2 className="size-4 animate-spin" /> Saving...
+        </>
+      ) : (
+        <>
+          <Save className="size-4" /> {label}
+        </>
+      )}
+    </button>
   )
 }
