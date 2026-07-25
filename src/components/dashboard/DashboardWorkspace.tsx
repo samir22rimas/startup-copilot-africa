@@ -3,6 +3,7 @@
 import type { DashboardDocument, DashboardQuickAction, DashboardRecommendation } from "@/src/app/actions/dashboard"
 import { addDashboardTask, sendStatefulCopilotMessage, toggleDashboardTask } from "@/src/app/actions/dashboard"
 import { WeeklyFocusCard } from "@/src/components/dashboard/WeeklyFocusCard"
+import { CopilotMarkdown } from "@/src/components/dashboard/CopilotMarkdown"
 import {
   ArrowRight,
   Check,
@@ -511,11 +512,12 @@ export function DashboardWorkspace({
         {/* Message history */}
         <div
           ref={chatListRef}
-          className="space-y-3 max-h-[380px] overflow-y-auto pr-2 [scrollbar-width:thin]"
+          className="max-h-[min(520px,55vh)] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin]"
         >
           {copilotMessages.filter((m) => m.role !== "system").length === 0 && !copilotLoading && (
             <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50">
               Ask about your target market, pricing strategy, Mobile Money setup, or fundraising steps.
+              Replies come as clear points plus a concrete next step.
             </div>
           )}
 
@@ -524,20 +526,24 @@ export function DashboardWorkspace({
             .map((msg) => (
               <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
+                  className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-4 py-3 ${
                     msg.role === "user"
-                      ? "bg-green-700 text-white rounded-tr-none"
-                      : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 rounded-tl-none"
+                      ? "rounded-tr-none bg-green-700 text-white"
+                      : "rounded-tl-none border border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/60"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <CopilotMarkdown content={msg.content} variant="assistant" />
+                  ) : (
+                    <CopilotMarkdown content={msg.content} variant="user" />
+                  )}
                 </div>
               </div>
             ))}
 
           {copilotLoading && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 px-4 py-3 text-xs text-zinc-500">
+              <div className="flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-3 text-xs text-zinc-500 dark:bg-zinc-800">
                 <Loader2 className="size-4 animate-spin text-green-600" />
                 Copilot is thinking...
               </div>

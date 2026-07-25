@@ -69,17 +69,14 @@ export function CopilotMarkdown({
               {children}
             </ol>
           ),
-          li: ({ children }) => (
-            <li
-              className={cn(
-                "relative leading-relaxed pl-5 [ol>&]:pl-1",
-                "before:absolute before:left-0 before:top-[0.4em] before:size-1.5 before:rounded-full [ol>&]:before:hidden",
-                isUser ? "before:bg-green-200" : "before:bg-green-600 dark:before:bg-green-400",
-              )}
-            >
-              {children}
-            </li>
-          ),
+          li: ({ children, ...props }) => {
+            // Unordered lists get custom dots; ordered lists use native markers from parent <ol>
+            return (
+              <li className="leading-relaxed [ul>&]:relative [ul>&]:pl-5 [ul>&]:before:absolute [ul>&]:before:left-0 [ul>&]:before:top-[0.4em] [ul>&]:before:size-1.5 [ul>&]:before:rounded-full [ul>&]:before:bg-green-600 dark:[ul>&]:before:bg-green-400" {...props}>
+                {children}
+              </li>
+            )
+          },
           a: ({ href, children }) => (
             <a
               href={href}

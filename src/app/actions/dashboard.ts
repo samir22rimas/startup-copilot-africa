@@ -749,10 +749,9 @@ export async function sendStatefulCopilotMessage(
     throw new Error("Failed to save message.")
   }
 
-  // 2. Fetch project/startup context
   const { data: project } = await supabase
     .from("projects")
-    .select("startup_id, title, description")
+    .select("startup_id, title, description, metadata")
     .eq("id", projectId)
     .single()
 
@@ -776,28 +775,58 @@ export async function sendStatefulCopilotMessage(
   const { getDocumentContextForStartup } = await import("@/src/app/actions/documents")
   const documentContext = await getDocumentContextForStartup(project.startup_id)
 
+  const metadata =
+    project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata)
+      ? (project.metadata as Record<string, unknown>)
+      : {}
+
+  const { readWeeklyFocusPlan, formatWeekLabel } = await import("@/src/lib/focus-plan")
+  const weeklyFocus = readWeeklyFocusPlan(metadata)
+  const focusBlock = weeklyFocus
+    ? `This week's focus (${formatWeekLabel(weeklyFocus.weekStart)}):\n${weeklyFocus.priorities
+        .map((p, i) => `${i + 1}. [${p.done ? "done" : "open"}] ${p.title}`)
+        .join("\n")}${weeklyFocus.checkIn?.note ? `\nCheck-in note: ${weeklyFocus.checkIn.note}` : ""}`
+    : "No weekly focus plan set yet."
+
   const systemContext = `You are Startup Copilot, an expert AI advisor for early-stage African startup founders.
-You provide actionable, context-aware advice on product development, fundraising, marketing, and operations.
-Keep responses concise and practical.
-Prefer facts from founder-uploaded documents when they conflict with assumptions.
+
+RESPONSE FORMAT (always use Markdown):
+1) Start with a one-sentence **Answer** (direct).
+2) Then a ### Key points section with a numbered or bulleted list (3–6 short points). Each point should be scannable — bold the lead phrase.
+3) Then a ### Next step section with exactly ONE concrete action the founder should do in the next 48 hours (specific, local-context when possible: Mobile Money, city, currency).
+4) Optionally end with a ### Watch out line (one risk to avoid).
+
+Rules:
+- Prefer short paragraphs and lists over long walls of text.
+- Prefer facts from founder-uploaded documents when they conflict with assumptions.
+- Tie advice to their weekly focus when relevant.
+- Do not invent live analytics numbers.
+- Keep the whole reply under ~250 words unless the user asks for depth.
+
 Current startup context:
 - Name: ${startup?.name}
 - Industry: ${startup?.industry || "N/A"}
+- Stage: ${startup?.stage || "N/A"}
 - Description: ${project?.description || startup?.description || "N/A"}
 - Location: ${startup?.city || "N/A"}, ${startup?.country_code}
 - Budget: ${(startup?.estimated_budget_cents || 0) / 100} ${startup?.budget_currency || "USD"}
 
+${focusBlock}
+
 Founder-uploaded documents (tracked knowledge):
 ${documentContext}`
 
-  const formattedMessages = (messages || []).map(m => ({
+  const formattedMessages = (messages || []).map((m) => ({
     role: m.role as "user" | "assistant" | "system",
-    content: m.content
+    content: m.content,
   }))
 
   // 4. Request response from the available AI provider
   const { generateTextWithFallback } = await import("@/src/lib/ai-providers")
-  const reply = await generateTextWithFallback(systemContext, formattedMessages)
+  const reply = await generateTextWithFallback(systemContext, formattedMessages, {
+    maxTokens: 900,
+    temperature: 0.55,
+  })
 
   // 5. Insert assistant response (must use service-role client — RLS only allows
   //    role='user' inserts for regular users; assistant messages are server-only)
