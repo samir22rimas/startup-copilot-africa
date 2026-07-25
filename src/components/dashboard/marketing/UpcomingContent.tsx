@@ -29,6 +29,14 @@ export function UpcomingContent() {
                 <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">{item.title}</h4>
                 <div className="text-[11px] font-medium text-zinc-500 flex items-center gap-1.5 mt-0.5">
                   {item.type} <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" /> {item.time}
+                  {item.source && (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                      <span className="uppercase tracking-wider text-[9px] font-bold text-zinc-400">
+                        {item.source === "tracked" ? "Tracked" : "On file"}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -24,7 +24,7 @@ export function TopNav({ user }: TopNavProps) {
   const initial = user?.initial || "U"
 
   return (
-    <header className="h-16 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-between px-6 relative z-50">
+    <header className="relative z-50 flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 dark:border-zinc-800 dark:bg-zinc-950">
       
       {/* Left section: Logo & Nav Links */}
       <div className="flex items-center gap-8">

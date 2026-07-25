@@ -61,7 +61,8 @@ export function DashboardWorkspace({
   const [question, setQuestion] = React.useState("")
   const [copilotLoading, setCopilotLoading] = React.useState(false)
 
-  const chatEndRef = React.useRef<HTMLDivElement>(null)
+  const chatListRef = React.useRef<HTMLDivElement>(null)
+  const skipChatAutoScroll = React.useRef(true)
 
   const completed = tasks.filter((t) => t.done).length
   const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
@@ -71,6 +72,14 @@ export function DashboardWorkspace({
   const documents: DashboardDocument[] = overview?.documents ?? []
   const quickActions: DashboardQuickAction[] = overview?.quickActions ?? []
 
+  function scrollMainToCopilot() {
+    const el = document.getElementById("copilot")
+    const scroller = el?.closest("main") || window
+    if (!el) return
+
+    el.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   React.useEffect(() => {
     setTasks(initialTasks)
   }, [initialTasks])
@@ -79,13 +88,21 @@ export function DashboardWorkspace({
     setCopilotMessages(initialMessages)
   }, [initialMessages])
 
-  // Scroll to bottom of chat when new message arrives
+  // Uniquement scroller la zone interne du chat, sans faire défiler la fenêtre
   React.useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const list = chatListRef.current
+    if (!list) return
+
+    if (skipChatAutoScroll.current) {
+      skipChatAutoScroll.current = false
+      list.scrollTop = list.scrollHeight
+      return
+    }
+
+    list.scrollTo({ top: list.scrollHeight, behavior: "smooth" })
   }, [copilotMessages, copilotLoading])
 
   async function handleToggle(taskId: string, currentStatus: boolean) {
-    // Optimistic UI update
     setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, done: !currentStatus } : t)))
     await toggleDashboardTask(project.id, taskId, !currentStatus)
     router.refresh()
@@ -139,9 +156,9 @@ export function DashboardWorkspace({
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-16 font-sans max-w-7xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 pb-12 font-sans max-w-7xl mx-auto w-full overflow-x-hidden">
       {/* Header Banner */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-green-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-green-700 dark:bg-green-950/60 dark:text-green-300">
@@ -158,8 +175,8 @@ export function DashboardWorkspace({
         </div>
 
         <button
-          onClick={() => document.getElementById("copilot")?.scrollIntoView({ behavior: "smooth" })}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] shrink-0"
+          onClick={scrollMainToCopilot}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] shrink-0 cursor-pointer"
         >
           <Sparkles className="size-4 text-green-200 animate-pulse" /> Ask Copilot
         </button>
@@ -169,7 +186,8 @@ export function DashboardWorkspace({
       <section className="grid gap-6 lg:grid-cols-12">
         {/* Validation Score */}
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-green-900 via-green-900 to-emerald-950 p-6 sm:p-8 text-white shadow-lg lg:col-span-7 flex flex-col justify-between">
-          <div className="absolute -right-12 -top-12 size-48 rounded-full bg-green-400/10 blur-2xl pointer-events-none" />
+          {/* Correction: overflow-hidden sur le parent empêche le blur de déborder */}
+          <div className="absolute -right-8 -top-8 size-48 rounded-full bg-green-400/10 blur-xl pointer-events-none" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-sm space-y-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-green-300">
@@ -194,7 +212,7 @@ export function DashboardWorkspace({
         </div>
 
         {/* Market Focus */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-5 space-y-5">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-5 space-y-5">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div>
               <h3 className="font-bold text-zinc-900 dark:text-white text-base">Market Adaptation Focus</h3>
@@ -239,7 +257,7 @@ export function DashboardWorkspace({
 
       {/* Action Items List */}
       <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-8 space-y-6">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="size-5 text-green-700" />
@@ -282,7 +300,7 @@ export function DashboardWorkspace({
           {!showAddTask ? (
             <button
               onClick={() => setShowAddTask(true)}
-              className="inline-flex items-center gap-2 text-xs font-bold text-green-700 transition hover:text-green-800"
+              className="inline-flex items-center gap-2 text-xs font-bold text-green-700 transition hover:text-green-800 cursor-pointer"
             >
               <Plus className="size-4" /> Add custom milestone
             </button>
@@ -308,10 +326,10 @@ export function DashboardWorkspace({
                 <option value="Custom">Custom</option>
               </select>
               <div className="flex gap-2">
-                <button type="submit" className="h-10 rounded-xl bg-green-700 px-4 text-xs font-semibold text-white hover:bg-green-800 transition">
+                <button type="submit" className="h-10 rounded-xl bg-green-700 px-4 text-xs font-semibold text-white hover:bg-green-800 transition cursor-pointer">
                   Save
                 </button>
-                <button type="button" onClick={() => setShowAddTask(false)} className="h-10 rounded-xl border border-zinc-200 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                <button type="button" onClick={() => setShowAddTask(false)} className="h-10 rounded-xl border border-zinc-200 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer">
                   Cancel
                 </button>
               </div>
@@ -321,7 +339,7 @@ export function DashboardWorkspace({
 
         {/* Right Sidebar Info */}
         <aside className="lg:col-span-4 space-y-6">
-          <div className="rounded-3xl border border-zinc-200 border-l-4 border-l-amber-500 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 space-y-3">
+          <div className="rounded-3xl border border-zinc-200 border-l-4 border-l-amber-500 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-3">
             <div className="flex items-center gap-2">
               <Lightbulb className="size-5 text-amber-500" />
               <h3 className="font-bold text-zinc-900 dark:text-white text-sm">Strategic Insight</h3>
@@ -348,7 +366,7 @@ export function DashboardWorkspace({
 
       {/* Business Health & AI Recommendations */}
       <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-green-700">Health Score</p>
@@ -396,27 +414,45 @@ export function DashboardWorkspace({
 
       {/* Documents & Quick Actions */}
       <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800">
-            <FileText className="size-5 text-green-700" />
-            <h3 className="font-bold text-zinc-900 dark:text-white text-base">Knowledge & Documents</h3>
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+              <FileText className="size-5 text-green-700" />
+              <h3 className="font-bold text-zinc-900 dark:text-white text-base">Knowledge & Documents</h3>
+            </div>
+            <Link
+              href="/dashboard/documents"
+              className="text-xs font-semibold text-green-700 hover:text-green-800"
+            >
+              Manage vault
+            </Link>
           </div>
           <div className="space-y-3">
-            {documents.map((doc) => (
+            {documents.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/60 p-4 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/40">
+                No tracked uploads yet.{" "}
+                <Link href="/dashboard/documents" className="font-semibold text-green-700 hover:underline">
+                  Upload a document
+                </Link>{" "}
+                so Copilot can use your real materials.
+              </div>
+            ) : (
+              documents.map((doc) => (
               <div key={doc.id} className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-100 bg-zinc-50/60 p-3.5 dark:border-zinc-800 dark:bg-zinc-950/40">
                 <div>
                   <h4 className="font-semibold text-xs text-zinc-900 dark:text-white">{doc.title}</h4>
                   <p className="text-xs text-zinc-500 mt-0.5">{doc.summary}</p>
                 </div>
                 <span className="rounded-full bg-green-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-green-700 dark:bg-green-950/40 dark:text-green-300 shrink-0">
-                  {doc.status}
+                  Tracked
                 </span>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <Zap className="size-5 text-amber-500" />
             <h3 className="font-bold text-zinc-900 dark:text-white text-base">Quick Actions</h3>
@@ -457,7 +493,10 @@ export function DashboardWorkspace({
         </div>
 
         {/* Message history */}
-        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-2 [scrollbar-width:thin]">
+        <div
+          ref={chatListRef}
+          className="space-y-3 max-h-[380px] overflow-y-auto pr-2 [scrollbar-width:thin]"
+        >
           {copilotMessages.filter((m) => m.role !== "system").length === 0 && !copilotLoading && (
             <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50">
               Ask about your target market, pricing strategy, Mobile Money setup, or fundraising steps.
@@ -488,7 +527,6 @@ export function DashboardWorkspace({
               </div>
             </div>
           )}
-          <div ref={chatEndRef} />
         </div>
 
         <form onSubmit={handleAskCopilot} className="flex gap-3">
@@ -502,7 +540,7 @@ export function DashboardWorkspace({
           <button
             type="submit"
             disabled={copilotLoading || !question.trim()}
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-700 text-white transition hover:bg-green-800 disabled:opacity-50"
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-700 text-white transition hover:bg-green-800 disabled:opacity-50 cursor-pointer"
             aria-label="Send message"
           >
             <Send className="size-4" />

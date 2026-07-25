@@ -7,6 +7,7 @@ import {
   ChevronDown,
   CircleDollarSign,
   FileText,
+  FolderOpen,
   HelpCircle,
   Home,
   Megaphone,
@@ -16,11 +17,12 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
 const navItems = [
   { icon: Home, label: "Overview", href: "/dashboard" },
+  { icon: FolderOpen, label: "Documents", href: "/dashboard/documents" },
   { icon: FileText, label: "Results", href: "/dashboard/results" },
   { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
   { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
@@ -30,20 +32,55 @@ const navItems = [
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 
-export function Sidebar({ projects }: { projects: Array<{ id: string; title: string }> }) {
+export function Sidebar({
+  projects,
+  activeProjectId,
+}: {
+  projects: Array<{ id: string; title: string }>
+  activeProjectId?: string | null
+}) {
   const pathname = usePathname();
-  const [activeProject, setActiveProject] = React.useState(projects[0]?.title ?? "No project selected");
+  const router = useRouter();
+  const active =
+    projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null;
+  const [activeTitle, setActiveTitle] = React.useState(active?.title ?? "No project selected");
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] =
     React.useState(false);
+  const [switching, setSwitching] = React.useState(false);
+
+  React.useEffect(() => {
+    setActiveTitle(active?.title ?? "No project selected");
+  }, [active?.title]);
+
+  async function handleSelectProject(project: { id: string; title: string }) {
+    if (project.id === active?.id) {
+      setIsProjectDropdownOpen(false);
+      return;
+    }
+    setSwitching(true);
+    setActiveTitle(project.title);
+    setIsProjectDropdownOpen(false);
+    try {
+      const { setActiveProject } = await import("@/src/app/actions/project-context");
+      const res = await setActiveProject(project.id);
+      if (!res.success) {
+        setActiveTitle(active?.title ?? "No project selected");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   return (
     <aside
       className={cn(
-        // Mobile: sticky top bar, no vertical growth, no border-r
-        "sticky top-0 z-30 w-full shrink-0 bg-white dark:bg-zinc-950",
+        // Mobile: compact top bar under TopNav (shell locks viewport scroll)
+        "z-30 w-full shrink-0 bg-white dark:bg-zinc-950",
         "border-b border-zinc-200 dark:border-zinc-800",
-        // Desktop: static full-height left column
-        "md:sticky md:top-0 md:h-screen md:w-64 md:border-b-0 md:border-r",
+        // Desktop: full remaining height beside main (not h-screen — that sits under TopNav)
+        "md:h-full md:w-64 md:overflow-y-auto md:border-b-0 md:border-r",
         "flex flex-col",
       )}
     >
@@ -58,10 +95,10 @@ export function Sidebar({ projects }: { projects: Array<{ id: string; title: str
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-6 h-6 shrink-0 rounded-md bg-green-600 flex items-center justify-center text-white font-bold text-xs">
-                  {activeProject.charAt(0)}
+                  {activeTitle.charAt(0)}
                 </div>
                 <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50 truncate">
-                  {activeProject}
+                  {switching ? "Switching…" : activeTitle}
                 </span>
               </div>
               <ChevronDown className="w-4 h-4 shrink-0 text-zinc-500" />
@@ -77,14 +114,13 @@ export function Sidebar({ projects }: { projects: Array<{ id: string; title: str
                   {projects.map((project) => (
                     <button
                       key={project.id}
-                      onClick={() => {
-                        setActiveProject(project.title);
-                        setIsProjectDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                      type="button"
+                      disabled={switching}
+                      onClick={() => handleSelectProject(project)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
                     >
                       {project.title}
-                      {activeProject === project.title && (
+                      {active?.id === project.id && (
                         <Check className="w-4 h-4 text-green-600" />
                       )}
                     </button>

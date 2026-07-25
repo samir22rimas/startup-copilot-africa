@@ -6,13 +6,15 @@ import * as React from "react"
 import { useMarketing } from "./MarketingContext"
 
 export function GrowthStrategy() {
-  const { loading } = useMarketing()
+  const { loading, strategyItems } = useMarketing()
   const [isExpanded, setIsExpanded] = React.useState(false)
+
+  const primary = strategyItems[0]
+  const secondary = strategyItems[1]
+  const rest = strategyItems.slice(2)
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden transition-all duration-300">
-      
-      {/* Lightbulb blur background */}
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-100 dark:bg-green-900/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="flex items-center gap-2 mb-6">
@@ -27,26 +29,22 @@ export function GrowthStrategy() {
           <p className="text-sm text-zinc-500">Loading recommendations from your latest startup records...</p>
         ) : (
           <>
-            <div className="group cursor-pointer">
-              <h4 className="text-sm font-bold text-green-700 dark:text-green-500 group-hover:text-green-800 transition-colors">
-                Latest recommendation
-              </h4>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">
-                Your current startup context is being used to shape the next release and content push.
-              </p>
-            </div>
+            {primary && (
+              <div>
+                <h4 className="text-sm font-bold text-green-700 dark:text-green-500">{primary.title}</h4>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">{primary.detail}</p>
+              </div>
+            )}
 
-            <div className="group cursor-pointer">
-              <h4 className="text-sm font-bold text-green-700 dark:text-green-500 group-hover:text-green-800 transition-colors">
-                Content direction
-              </h4>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">
-                The dashboard pulls insights and documents from your database so this section reflects your live progress.
-              </p>
-            </div>
+            {secondary && (
+              <div>
+                <h4 className="text-sm font-bold text-green-700 dark:text-green-500">{secondary.title}</h4>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">{secondary.detail}</p>
+              </div>
+            )}
 
             <AnimatePresence>
-              {isExpanded && (
+              {isExpanded && rest.length > 0 && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -54,14 +52,12 @@ export function GrowthStrategy() {
                   className="overflow-hidden"
                 >
                   <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-4 space-y-4">
-                    <div className="group cursor-pointer">
-                      <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 transition-colors">
-                        Database-backed insight
-                      </h4>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">
-                        When you add documents or AI insights, this card updates automatically from the stored records.
-                      </p>
-                    </div>
+                    {rest.map((item) => (
+                      <div key={item.title}>
+                        <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400">{item.title}</h4>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mt-2">{item.detail}</p>
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -70,19 +66,25 @@ export function GrowthStrategy() {
         )}
       </div>
 
-      <div className="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-xs font-bold text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400 transition-colors"
-        >
-          {isExpanded ? (
-            <>Close report <ChevronUp className="w-3 h-3" /></>
-          ) : (
-            <>View full report <ArrowRight className="w-3 h-3" /></>
-          )}
-        </button>
-      </div>
+      {rest.length > 0 && (
+        <div className="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-xs font-bold text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400 transition-colors"
+          >
+            {isExpanded ? (
+              <>
+                Close report <ChevronUp className="w-3 h-3" />
+              </>
+            ) : (
+              <>
+                View full report <ArrowRight className="w-3 h-3" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
-

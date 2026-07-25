@@ -46,13 +46,17 @@ export function AiGenerator() {
   }
 
   const handleSchedule = () => {
-    const nextDay = new Date().getDate() + 2
+    if (!content.trim()) {
+      toast.error("Generate content before scheduling")
+      return
+    }
+    const nextDay = Math.min(31, new Date().getDate() + 2)
     addEvent({
       day: nextDay,
-      label: "LinkedIn draft",
-      color: "border-blue-500 text-blue-700 bg-blue-50"
+      label: content.trim().slice(0, 48) + (content.trim().length > 48 ? "…" : ""),
+      color: "border-blue-500 text-blue-700 bg-blue-50",
+      content: content.trim(),
     })
-    toast.success("Post scheduled for your planner")
   }
 
   return (

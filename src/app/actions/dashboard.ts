@@ -38,6 +38,9 @@ export interface MarketingMetric {
   change: string
   trend: "up" | "down"
   color: string
+  /** Always derived from app records — never live campaign analytics */
+  source: "derived"
+  footnote: string
 }
 
 export interface MarketingEventItem {
@@ -45,6 +48,7 @@ export interface MarketingEventItem {
   day: number
   label: string
   color: string
+  content?: string
 }
 
 export interface MarketingUpcomingItem {
@@ -55,6 +59,14 @@ export interface MarketingUpcomingItem {
   iconName: "file" | "video" | "mail" | "sparkles"
   iconBg: string
   iconColor: string
+  source: "tracked" | "derived"
+}
+
+export interface FocusIndicator {
+  label: string
+  value: number
+  footnote: string
+  source: "derived" | "tracked"
 }
 
 export interface MarketingOverview {
@@ -68,10 +80,13 @@ export interface MarketingOverview {
 export interface DashboardOverview {
   healthScore: number
   healthLabel: string
+  healthFootnote: string
+  focusIndicators: FocusIndicator[]
   recommendations: DashboardRecommendation[]
   documents: DashboardDocument[]
   quickActions: DashboardQuickAction[]
   marketing: MarketingOverview
+  trackedMetrics: import("@/src/lib/data-truth").TrackedMetrics | null
 }
 
 function getHealthLabel(score: number) {
@@ -87,21 +102,86 @@ function calculateHealthScore(
   tasks: DashboardTask[],
   documents: any[],
   insights: any[],
+  tracked?: import("@/src/lib/data-truth").TrackedMetrics | null,
 ) {
-  let score = 25
+  let score = 20
 
-  if (startup?.onboarding_status === "completed") score += 20
-  if (startup?.estimated_budget_cents && startup.estimated_budget_cents > 0) score += 10
-  if (project?.description) score += 10
-  if (project?.target_audience) score += 10
+  if (startup?.onboarding_status === "completed") score += 15
+  if (startup?.estimated_budget_cents && startup.estimated_budget_cents > 0) score += 8
+  if (project?.description) score += 8
+  if (project?.target_audience) score += 8
   if (tasks.length > 0) {
     const completedTasks = tasks.filter((task) => task.done).length
     score += Math.round((completedTasks / tasks.length) * 20)
   }
-  if (documents.length > 0) score += 10
-  if (insights.length > 0) score += 10
+  if (documents.length > 0) score += 8
+  if (insights.length > 0) score += 5
+
+  // Bonus only when founder has logged real operating numbers
+  if (tracked?.updatedAt) {
+    if (tracked.monthlyRevenue > 0 || tracked.activeCustomers > 0) score += 10
+    if (tracked.monthlyBurn > 0) score += 5
+    if (tracked.visitorsThisMonth > 0) score += 5
+  }
 
   return Math.min(100, Math.max(0, score))
+}
+
+function buildFocusIndicators(
+  startup: any,
+  project: any,
+  tasks: DashboardTask[],
+  tracked?: import("@/src/lib/data-truth").TrackedMetrics | null,
+): FocusIndicator[] {
+  const valueProp =
+    (project?.description ? 40 : 0) +
+    (project?.target_audience ? 40 : 0) +
+    (startup?.industry ? 20 : 0)
+
+  const completed = tasks.filter((t) => t.done).length
+  const taskProgress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
+
+  let runwayScore = startup?.estimated_budget_cents > 0 ? 40 : 10
+  let runwayFootnote = startup?.estimated_budget_cents > 0
+    ? "Based on budget set in your startup profile"
+    : "No budget set yet — update Settings"
+  let runwaySource: "derived" | "tracked" = "derived"
+
+  if (tracked?.updatedAt && tracked.monthlyBurn > 0) {
+    runwaySource = "tracked"
+    const net = Math.max(0, tracked.monthlyBurn - tracked.monthlyRevenue)
+    if (net === 0 && tracked.monthlyRevenue > 0) {
+      runwayScore = 90
+      runwayFootnote = "Tracked: revenue covers burn this month"
+    } else if (tracked.monthlyRevenue > 0) {
+      runwayScore = 55
+      runwayFootnote = `Tracked: net burn ${net} ${tracked.currency}/mo`
+    } else {
+      runwayScore = 30
+      runwayFootnote = `Tracked burn ${tracked.monthlyBurn} ${tracked.currency}/mo — no revenue logged`
+    }
+  }
+
+  return [
+    {
+      label: "Value proposition setup",
+      value: Math.min(100, valueProp),
+      footnote: "Derived from description, audience, and industry on file",
+      source: "derived",
+    },
+    {
+      label: "Milestone execution",
+      value: taskProgress,
+      footnote: `${completed}/${tasks.length || 0} milestones complete`,
+      source: "derived",
+    },
+    {
+      label: "Financial runway signal",
+      value: runwayScore,
+      footnote: runwayFootnote,
+      source: runwaySource,
+    },
+  ]
 }
 
 function buildRecommendations(
@@ -152,36 +232,31 @@ function buildRecommendations(
 }
 
 function buildDocuments(startup: any, project: any, documents: any[]): DashboardDocument[] {
-  if (documents.length > 0) {
-    return documents.slice(0, 4).map((document) => ({
-      id: document.id,
-      title: document.file_name || "Generated document",
-      summary: document.metadata?.summary || `Stored for ${startup?.name || project?.title || "your startup"}`,
-      status: document.status || "ready",
-    }))
-  }
+  if (documents.length === 0) return []
 
-  return [
-    {
-      id: "startup-brief",
-      title: `${startup?.name || project?.title || "Your startup"} business brief`,
-      summary: `A working brief based on ${project?.title || "your active project"}.`,
-      status: "ready",
-    },
-  ]
+  return documents.slice(0, 4).map((document) => ({
+    id: document.id,
+    title: document.file_name || "Uploaded document",
+    summary:
+      document.metadata?.summary ||
+      (document.extracted_text
+        ? String(document.extracted_text).slice(0, 120)
+        : `Tracked upload for ${startup?.name || project?.title || "your startup"}`),
+    status: document.status || "ready",
+  }))
 }
 
 function buildQuickActions(startup: any, project: any): DashboardQuickAction[] {
   return [
     {
+      label: "Upload knowledge documents",
+      href: "/dashboard/documents",
+      description: "Add briefs and research so Copilot uses your real files",
+    },
+    {
       label: "Open marketing workspace",
       href: "/dashboard/marketing",
       description: `Create launch content for ${project?.title || startup?.name || "your startup"}`,
-    },
-    {
-      label: "Review startup settings",
-      href: "/dashboard/settings",
-      description: "Update business details, budget, and founder profile",
     },
     {
       label: "Ask your copilot",
@@ -191,20 +266,32 @@ function buildQuickActions(startup: any, project: any): DashboardQuickAction[] {
   ]
 }
 
-function buildMarketingOverview(startup: any, project: any, tasks: DashboardTask[], documents: any[], insights: any[]): MarketingOverview {
+function buildMarketingOverview(
+  startup: any,
+  project: any,
+  tasks: DashboardTask[],
+  documents: any[],
+  insights: any[],
+  scheduledEvents: MarketingEventItem[] = [],
+): MarketingOverview {
   const completedTasks = tasks.filter((task) => task.done).length
   const totalAssets = documents.length + insights.length
-  const launchReadiness = Math.min(100, Math.round(35 + completedTasks * 8 + (documents.length > 0 ? 15 : 0) + (insights.length > 0 ? 10 : 0)))
+  const launchReadiness = Math.min(
+    100,
+    Math.round(35 + completedTasks * 8 + (documents.length > 0 ? 15 : 0) + (insights.length > 0 ? 10 : 0)),
+  )
   const coverage = Math.min(100, Math.round(20 + documents.length * 15 + insights.length * 10))
 
   const kpis: MarketingMetric[] = [
     {
-      title: "ACTIVE ASSETS",
+      title: "SAVED ASSETS",
       value: totalAssets,
       unit: " items",
-      change: `${documents.length} documents`,
+      change: `${documents.length} docs · ${insights.length} insights`,
       trend: "up",
       color: "bg-green-100 text-green-700",
+      source: "derived",
+      footnote: "Count of documents and insights stored in this app — not live ad metrics",
     },
     {
       title: "LAUNCH READINESS",
@@ -213,14 +300,18 @@ function buildMarketingOverview(startup: any, project: any, tasks: DashboardTask
       change: `${completedTasks}/${tasks.length} tasks complete`,
       trend: "up",
       color: "bg-blue-100 text-blue-700",
+      source: "derived",
+      footnote: "Heuristic from milestone completion and saved assets — not market traction",
     },
     {
-      title: "MARKETING COVERAGE",
+      title: "CONTEXT COVERAGE",
       value: coverage,
       unit: "%",
-      change: `${insights.length} insights`,
+      change: `${insights.length} insights on file`,
       trend: insights.length > 0 ? "up" : "down",
       color: "bg-zinc-100 text-zinc-700",
+      source: "derived",
+      footnote: "How much launch context the AI can use — not campaign reach",
     },
   ]
 
@@ -229,7 +320,11 @@ function buildMarketingOverview(startup: any, project: any, tasks: DashboardTask
     insights.slice(0, 3).forEach((insight) => {
       strategyItems.push({
         title: insight.title || insight.kind || "Marketing insight",
-        detail: insight.result?.summary || insight.result?.next_step || insight.error_message || "Keep the launch momentum moving.",
+        detail:
+          insight.result?.summary ||
+          insight.result?.next_step ||
+          insight.error_message ||
+          "Keep the launch momentum moving.",
       })
     })
   }
@@ -241,78 +336,49 @@ function buildMarketingOverview(startup: any, project: any, tasks: DashboardTask
     })
   }
 
-  const generatedContent = [
-    project?.title || startup?.name || "Your startup",
-    documents[0]?.file_name || null,
-    insights[0]?.title || null,
-  ]
+  const generatedContent = [project?.title || startup?.name || "Your startup", documents[0]?.file_name || null, insights[0]?.title || null]
     .filter(Boolean)
     .join(" • ")
 
-  const baseDay = new Date().getDate()
-  const events: MarketingEventItem[] = []
-  documents.slice(0, 3).forEach((document, index) => {
-    const day = (baseDay + index + 1) % 28 || 28
-    events.push({
-      id: `doc-${document.id}`,
-      day,
-      label: `Doc: ${document.file_name || "draft"}`,
-      color: index % 2 === 0 ? "border-blue-500 text-blue-700 bg-blue-50" : "border-fuchsia-500 text-fuchsia-700 bg-fuchsia-50",
-    })
-  })
-  insights.slice(0, 2).forEach((insight, index) => {
-    const day = (baseDay + index + 4) % 28 || 28
-    events.push({
-      id: `insight-${insight.id}`,
-      day,
-      label: `Insight: ${insight.title || insight.kind || "launch"}`,
-      color: index === 0 ? "bg-green-600 text-white border-green-600" : "border-orange-500 text-orange-700 bg-orange-50",
-    })
-  })
+  // Calendar only shows founder-scheduled posts — never invents events from documents
+  const events: MarketingEventItem[] = scheduledEvents
 
-  const upcoming: MarketingUpcomingItem[] = []
-  if (documents.length > 0) {
+  const upcoming: MarketingUpcomingItem[] = scheduledEvents
+    .slice()
+    .sort((a, b) => a.day - b.day)
+    .slice(0, 5)
+    .map((event) => ({
+      id: event.id,
+      title: event.label,
+      type: "Scheduled",
+      time: `Day ${event.day}`,
+      iconName: "mail" as const,
+      iconBg: "bg-green-100 dark:bg-green-900/30",
+      iconColor: "text-green-700 dark:text-green-400",
+      source: "tracked" as const,
+    }))
+
+  if (upcoming.length === 0 && documents.length > 0) {
     documents.slice(0, 2).forEach((document, index) => {
       upcoming.push({
         id: `upcoming-doc-${document.id}`,
         title: document.file_name || "Launch document",
-        type: index === 0 ? "Draft" : "Review",
-        time: document.created_at ? "Ready now" : "Queued",
+        type: "On file",
+        time: "Not scheduled",
         iconName: index === 0 ? "file" : "video",
         iconBg: index === 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-pink-100 dark:bg-pink-900/30",
         iconColor: index === 0 ? "text-blue-600 dark:text-blue-400" : "text-pink-600 dark:text-pink-400",
+        source: "derived",
       })
-    })
-  }
-  if (insights.length > 0) {
-    insights.slice(0, 1).forEach((insight) => {
-      upcoming.push({
-        id: `upcoming-insight-${insight.id}`,
-        title: insight.title || insight.kind || "AI recommendation",
-        type: "Insight",
-        time: "Ready to act",
-        iconName: "sparkles",
-        iconBg: "bg-yellow-100 dark:bg-yellow-900/30",
-        iconColor: "text-yellow-600 dark:text-yellow-400",
-      })
-    })
-  }
-  if (upcoming.length === 0) {
-    upcoming.push({
-      id: "upcoming-default",
-      title: `${startup?.name || project?.title || "Your startup"} launch story`,
-      type: "Draft",
-      time: "Pending",
-      iconName: "mail",
-      iconBg: "bg-zinc-100 dark:bg-zinc-800",
-      iconColor: "text-zinc-600 dark:text-zinc-400",
     })
   }
 
   return {
     kpis,
     strategyItems,
-    generatedContent: generatedContent || `Your latest launch content will appear here once you store documents or insights for ${startup?.name || project?.title || "your startup"}.`,
+    generatedContent:
+      generatedContent ||
+      `Your latest launch content will appear here once you store documents or insights for ${startup?.name || project?.title || "your startup"}.`,
     events,
     upcoming,
   }
@@ -340,7 +406,20 @@ export async function getDashboardData() {
     return { hasStartup: true, hasProject: false, startup }
   }
 
-  const project = projects[0] // Get the active/most recent project
+  const { readActiveProjectCookie, resolveActiveProject, writeActiveProjectCookie } = await import(
+    "@/src/lib/active-project"
+  )
+  const preferredId = await readActiveProjectCookie()
+  const project = resolveActiveProject(projects, preferredId)
+
+  // Keep cookie aligned when falling back to newest project
+  if (preferredId !== project.id) {
+    try {
+      await writeActiveProjectCookie(project.id)
+    } catch {
+      // Cookie writes can fail in some RSC contexts; selection still works for this request
+    }
+  }
 
   // 3. Extract tasks from project metadata
   const metadata = (project.metadata as any) || {}
@@ -444,13 +523,45 @@ Description: ${project.description || "N/A"}`
     .order("created_at", { ascending: false })
     .limit(4)
 
+  const metadataBag =
+    project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata)
+      ? (project.metadata as Record<string, unknown>)
+      : {}
+
+  const { readTrackedMetrics, readMarketingWorkspace, hasTrackedMetrics } = await import("@/src/lib/data-truth")
+
+  const trackedMetricsRaw = readTrackedMetrics(metadataBag, startup.budget_currency || "USD")
+  const trackedMetrics = hasTrackedMetrics(trackedMetricsRaw) ? trackedMetricsRaw : null
+  const marketingWorkspace = readMarketingWorkspace(metadataBag)
+
+  const healthScore = calculateHealthScore(
+    startup,
+    project,
+    tasks,
+    documents || [],
+    insights || [],
+    trackedMetrics,
+  )
+
   const overview: DashboardOverview = {
-    healthScore: calculateHealthScore(startup, project, tasks, documents || [], insights || []),
-    healthLabel: getHealthLabel(calculateHealthScore(startup, project, tasks, documents || [], insights || [])),
+    healthScore,
+    healthLabel: getHealthLabel(healthScore),
+    healthFootnote: trackedMetrics
+      ? "Score blends onboarding progress, milestones, and your tracked operating metrics"
+      : "Score is derived from onboarding, milestones, and saved assets — log tracked metrics in Analytics to improve accuracy",
+    focusIndicators: buildFocusIndicators(startup, project, tasks, trackedMetrics),
     recommendations: buildRecommendations(startup, project, tasks, documents || [], insights || []),
     documents: buildDocuments(startup, project, documents || []),
     quickActions: buildQuickActions(startup, project),
-    marketing: buildMarketingOverview(startup, project, tasks, documents || [], insights || []),
+    marketing: buildMarketingOverview(
+      startup,
+      project,
+      tasks,
+      documents || [],
+      insights || [],
+      marketingWorkspace.events,
+    ),
+    trackedMetrics,
   }
 
   return {
@@ -458,6 +569,7 @@ Description: ${project.description || "N/A"}`
     hasProject: true,
     startup,
     project,
+    projects,
     tasks,
     conversationId,
     copilotMessages,
@@ -502,7 +614,14 @@ export async function createStartupAndFirstProject(input: {
       return { success: false as const, error: "Startup created, but the project failed to save." }
     }
 
-    revalidatePath("/dashboard")
+    const { writeActiveProjectCookie } = await import("@/src/lib/active-project")
+    try {
+      await writeActiveProjectCookie(project.id)
+    } catch {
+      // non-blocking
+    }
+
+    revalidatePath("/dashboard", "layout")
     return { success: true as const, startup, project }
   } catch (err: any) {
     console.error("Error in createStartupAndFirstProject:", err)
@@ -642,15 +761,22 @@ export async function sendStatefulCopilotMessage(
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
 
+  const { getDocumentContextForStartup } = await import("@/src/app/actions/documents")
+  const documentContext = await getDocumentContextForStartup(project.startup_id)
+
   const systemContext = `You are Startup Copilot, an expert AI advisor for early-stage African startup founders.
 You provide actionable, context-aware advice on product development, fundraising, marketing, and operations.
 Keep responses concise and practical.
+Prefer facts from founder-uploaded documents when they conflict with assumptions.
 Current startup context:
 - Name: ${startup?.name}
 - Industry: ${startup?.industry || "N/A"}
 - Description: ${project?.description || startup?.description || "N/A"}
 - Location: ${startup?.city || "N/A"}, ${startup?.country_code}
-- Budget: ${(startup?.estimated_budget_cents || 0) / 100} ${startup?.budget_currency || "USD"}`
+- Budget: ${(startup?.estimated_budget_cents || 0) / 100} ${startup?.budget_currency || "USD"}
+
+Founder-uploaded documents (tracked knowledge):
+${documentContext}`
 
   const formattedMessages = (messages || []).map(m => ({
     role: m.role as "user" | "assistant" | "system",
