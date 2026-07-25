@@ -34,13 +34,15 @@ export default async function DashboardPage() {
 
   // 5. Render final dashboard workspace
   return (
-    <DashboardWorkspace
-      startup={startup}
-      project={project}
-      initialTasks={tasks}
-      conversationId={conversationId || ""}
-      initialMessages={copilotMessages || []}
-      overview={overview}
-    />
+    <div className="h-full w-full">
+      <DashboardWorkspace
+        startup={startup}
+        project={project}
+        initialTasks={tasks}
+        conversationId={conversationId || ""}
+        initialMessages={copilotMessages || []}
+        overview={overview}
+      />
+    </div>
   )
 }
