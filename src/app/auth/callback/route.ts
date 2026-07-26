@@ -2,12 +2,22 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 import type { Database } from "@/src/lib/database.types"
+import { ROUTES } from "@/src/lib/constants"
+
+const ALLOWED_NEXT_PATHS = new Set<string>([ROUTES.dashboard, ROUTES.updatePassword])
+
+function resolveNextPath(value: string | null) {
+  if (!value) return ROUTES.dashboard
+
+  const decoded = decodeURIComponent(value)
+  return ALLOWED_NEXT_PATHS.has(decoded) ? decoded : ROUTES.dashboard
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get("code")
   const errorDescription = searchParams.get("error_description") || searchParams.get("error")
-  const next = searchParams.get("next") === "/update-password" ? "/update-password" : "/dashboard"
+  const next = resolveNextPath(searchParams.get("next"))
 
   if (errorDescription) {
     console.error("Auth OAuth callback error parameter:", errorDescription)

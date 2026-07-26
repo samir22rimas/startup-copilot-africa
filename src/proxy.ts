@@ -8,6 +8,21 @@ import { NextResponse, type NextRequest } from "next/server"
  * redirected to /dashboard to avoid showing auth pages to logged-in users.
  */
 export async function proxy(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl
+
+  // Supabase may fall back to Site URL (e.g. /) when /auth/callback is not whitelisted.
+  const oauthCode = searchParams.get("code")
+  if (oauthCode && pathname !== "/auth/callback") {
+    const callbackUrl = new URL("/auth/callback", request.url)
+    searchParams.forEach((value, key) => {
+      callbackUrl.searchParams.set(key, value)
+    })
+    if (!callbackUrl.searchParams.has("next")) {
+      callbackUrl.searchParams.set("next", "/dashboard")
+    }
+    return NextResponse.redirect(callbackUrl)
+  }
+
   const response = NextResponse.next({ request })
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -38,8 +53,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
   // Protected routes — require authentication
   if (pathname.startsWith("/dashboard") && !user) {
     const signInUrl = new URL("/sign-in", request.url)
@@ -47,7 +60,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
-  // Auth routes — redirect authenticated users away
+  // Auth routes — redirect authenticated users away (except password recovery)
   const isAuthRoute =
     pathname === "/sign-in" ||
     pathname === "/sign-up" ||

@@ -1,9 +1,9 @@
 "use server"
 
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
+import { authCallbackUrl, getSiteUrl, passwordResetCallbackUrl } from "@/src/lib/site-url"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 export type AuthState = { error?: string; message?: string }
@@ -16,21 +16,6 @@ const credentialsSchema = z.object({
 
 function getField(formData: FormData, field: string) {
   return typeof formData.get(field) === "string" ? String(formData.get(field)) : ""
-}
-
-async function getOrigin() {
-  if(process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
-
-  const requestHeaders = await headers()
-
-  const host = requestHeaders.get("host")
-  if (host){
-    const proto = requestHeaders.get("x-forwarded-proto") ?? "http"
-    
-    return `${proto}://${host}`
-  }
-
-  return "http://localhost:3000"
 }
 
 function getAuthErrorMessage(error: { message?: string } | null | undefined) {
@@ -79,7 +64,7 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
       password: parsed.data.password,
       options: {
         data: { full_name: parsed.data.fullName },
-        emailRedirectTo: `${await getOrigin()}/auth/callback?next=/dashboard`,
+        emailRedirectTo: authCallbackUrl(await getSiteUrl(), "/dashboard"),
       },
     })
 
@@ -93,26 +78,6 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
   return { error: "Unknown authentication request." }
 }
 
-export async function signInWithGoogle() {
-  const supabase = await createSupabaseServerClient()
-  const origin = await getOrigin()
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback?next=/dashboard`,
-      queryParams: {
-        prompt: "select_account",
-      },
-    },
-  })
-
-  if (error || !data.url) {
-    console.error("Google signInWithOAuth error:", error)
-    redirect("/sign-in?error=oauth")
-  }
-  redirect(data.url)
-}
-
 export async function requestPasswordReset(_: AuthState, formData: FormData): Promise<AuthState> {
   const email = getField(formData, "email")
   const parsed = z.string().trim().email("Enter a valid email address.").safeParse(email)
@@ -120,7 +85,7 @@ export async function requestPasswordReset(_: AuthState, formData: FormData): Pr
 
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${await getOrigin()}/auth/callback?next=/update-password`,
+    redirectTo: passwordResetCallbackUrl(await getSiteUrl()),
   })
 
   if (error) {
@@ -137,6 +102,14 @@ export async function updatePassword(_: AuthState, formData: FormData): Promise<
   if (password !== confirmation) return { error: "Passwords do not match." }
 
   const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Your reset link has expired or is invalid. Please request a new one." }
+  }
+
   const { error } = await supabase.auth.updateUser({ password })
   if (error) return { error: "Your reset link has expired. Please request a new one." }
   redirect("/dashboard")
