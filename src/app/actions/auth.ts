@@ -19,15 +19,18 @@ function getField(formData: FormData, field: string) {
 }
 
 async function getOrigin() {
+  if(process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+
   const requestHeaders = await headers()
-  const origin = requestHeaders.get("origin")
-  if (origin && origin !== "null") return origin
 
   const host = requestHeaders.get("host")
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "http"
-  if (host) return `${proto}://${host}`
+  if (host){
+    const proto = requestHeaders.get("x-forwarded-proto") ?? "http"
+    
+    return `${proto}://${host}`
+  }
 
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  return "http://localhost:3000"
 }
 
 function getAuthErrorMessage(error: { message?: string } | null | undefined) {

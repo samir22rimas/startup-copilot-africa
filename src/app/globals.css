@@ -176,6 +176,10 @@
 
   }
 
+  *::selection{
+    background-color: #16a34a;
+  }
+
   html {
     @apply font-sans;
     scroll-behavior: smooth;

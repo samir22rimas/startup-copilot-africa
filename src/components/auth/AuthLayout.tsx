@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
 import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
+import * as React from "react"
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,8 +13,9 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <div className="relative z-10 flex-1 flex flex-col justify-between">
           <div>
-            <div className="font-bold text-green-400 text-lg tracking-tight mb-20 transition-transform hover:scale-[1.01]">
-              Startup Copilot Africa
+            <div className="font-bold text-white text-lg tracking-tight mb-20 transition-transform hover:scale-[1.01]">
+              Startup Copilot 
+              <span className="text-green-400"> Africa</span> 
             </div>
             
             <h1 className="text-5xl font-extrabold leading-[1.15] mb-12 max-w-lg tracking-tight">
@@ -43,7 +44,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Footer Logos */}
-        <div className="relative z-10 flex items-center gap-10 mt-12 opacity-60 grayscale transition-opacity hover:opacity-80 duration-300">
+        <div className="relative z-10 flex items-center justify-between gap-10 mt-12 opacity-60 grayscale transition-opacity hover:opacity-80 duration-300">
           <span className="font-extrabold tracking-widest text-sm uppercase">Techstars</span>
           <span className="font-extrabold tracking-widest text-sm uppercase">Y-Combinator</span>
           <span className="font-extrabold tracking-widest text-sm uppercase">Africa VC</span>

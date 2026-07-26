@@ -1,7 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
 import Link from "next/link"
+import { useActionState } from "react"
 
 import { requestPasswordReset, updatePassword, type AuthState } from "@/src/app/actions/auth"
 import { Button } from "@/src/components/ui/button"
@@ -20,10 +20,15 @@ export function ForgotPasswordForm() {
 
   return (
     <form action={action} className="w-full max-w-sm mx-auto space-y-6">
-      <div className="space-y-2"><h1 className="text-3xl font-bold tracking-tight">Reset your password</h1><p className="text-sm text-zinc-500">We&apos;ll email you a secure reset link.</p></div>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Reset your password</h1>
+        <p className="text-sm text-zinc-500">We&apos;ll email you a secure reset link.</p>
+      </div>
       <Input name="email" type="email" autoComplete="email" required placeholder="name@company.com" className="h-12 bg-[#f3f6fc] border-transparent" />
       <FormNotice state={state} />
-      <Button disabled={pending} className="w-full h-12 rounded-xl bg-green-800 hover:bg-green-900">{pending ? "Sending…" : "Send reset link"}</Button>
+      <Button disabled={pending} className="w-full h-12 rounded-xl bg-green-800 hover:bg-green-900">
+        {pending ? "Sending…" : "Send reset link"}
+      </Button>
       <Link href="/sign-in" className="block text-center text-sm font-semibold text-green-700 hover:underline">Back to sign in</Link>
     </form>
   )
@@ -34,7 +39,10 @@ export function UpdatePasswordForm() {
 
   return (
     <form action={action} className="w-full max-w-sm mx-auto space-y-6">
-      <div className="space-y-2"><h1 className="text-3xl font-bold tracking-tight">Choose a new password</h1><p className="text-sm text-zinc-500">Use at least 8 characters to keep your account secure.</p></div>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Choose a new password</h1>
+        <p className="text-sm text-zinc-500">Use at least 8 characters to keep your account secure.</p>
+      </div>
       <Input name="password" type="password" autoComplete="new-password" required minLength={8} placeholder="New password" className="h-12 bg-[#f3f6fc] border-transparent" />
       <Input name="confirmation" type="password" autoComplete="new-password" required minLength={8} placeholder="Confirm new password" className="h-12 bg-[#f3f6fc] border-transparent" />
       <FormNotice state={state} />
