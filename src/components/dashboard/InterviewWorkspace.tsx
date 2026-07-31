@@ -1,6 +1,7 @@
 "use client"
 
 import { getOrCreateInterviewConversation, submitInterviewAnswer } from "@/src/app/actions/interview"
+import { InterviewSkeleton } from "@/src/components/skeletons/InterviewSkeleton"
 import { ArrowRight, CheckCircle2, Loader2, LoaderPinwheel, Send, Sparkles } from "lucide-react"
 import * as React from "react"
 
@@ -21,7 +22,7 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
   const [feedback, setFeedback] = React.useState("")
   const [statusNotice, setStatusNotice] = React.useState("")
 
-  const chatEndRef = React.useRef<HTMLDivElement>(null)
+  const chatListRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     async function init() {
@@ -40,9 +41,12 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
     init()
   }, [projectId])
 
+  // Scroll chat to bottom whenever messages update
   React.useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    const list = chatListRef.current
+    if (!list) return
+    list.scrollTop = list.scrollHeight
+  }, [messages, submitting])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -89,17 +93,12 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
-        <Loader2 className="size-8 animate-spin text-green-700" />
-        <p className="text-sm font-medium text-zinc-500">Preparing your business copilot...</p>
-      </div>
-    )
+    return <InterviewSkeleton />
   }
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-[1fr_320px] font-sans">
-      <div className="flex flex-col rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-500 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-700/60">
+    <div className="mx-auto grid max-w-4xl gap-4 sm:gap-6 lg:grid-cols-[1fr_320px] font-sans">
+      <div className="flex flex-col rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-500 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-700/60">
         <div className="border-b border-zinc-100 pb-4 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <span className="flex size-9 items-center justify-center rounded-xl bg-green-100 text-green-700 dark:bg-green-950/50">
@@ -113,7 +112,7 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
         </div>
 
         {/* Chat Feed */}
-        <div className="flex-1 overflow-y-auto py-6 space-y-4 max-h-[450px] min-h-[350px] pr-2">
+        <div ref={chatListRef} className="flex-1 overflow-y-auto py-4 sm:py-6 space-y-4 max-h-[380px] sm:max-h-[450px] min-h-[280px] sm:min-h-[350px] pr-1">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -138,7 +137,7 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
               </div>
             </div>
           )}
-          <div ref={chatEndRef} />
+          <div className="h-1" />
         </div>
 
         {/* Input */}
@@ -179,8 +178,8 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
       </div>
 
       {/* Side Insights Panel */}
-      <aside className="space-y-6">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-500 hover:shadow-md">
+      <aside className="space-y-4">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-500 hover:shadow-md">
           <h3 className="font-semibold text-sm text-zinc-900 dark:text-white">Onboarding Progress</h3>
           <p className="mt-1 text-xs text-zinc-500 leading-relaxed">We need a bit of details to start generating recommendations.</p>
           <div className="mt-5">

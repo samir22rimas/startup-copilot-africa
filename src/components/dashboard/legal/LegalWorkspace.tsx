@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   FileText,
 } from "lucide-react"
+import { GenericWorkspaceSkeleton } from "@/src/components/skeletons/GenericWorkspaceSkeleton"
 import { LegalWorkspace as ILegalWorkspace, generateLegalComplianceWorkspace, refreshLegalComplianceWorkspace } from "@/src/app/actions/legal"
 
 interface LegalWorkspaceProps {
@@ -79,17 +80,8 @@ export function LegalWorkspaceUI({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] rounded-3xl border border-zinc-200 bg-white p-12 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/50 mb-4 animate-pulse">
-          <Scale className="size-7" />
-        </div>
-        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Analyzing Legal & Compliance Requirements...</h3>
-        <p className="mt-2 text-sm text-zinc-500 max-w-md">
-          Consulting AI legal advisor for corporate laws, tax PINs, licenses, and data privacy regulations in {countryCode}.
-        </p>
-        <div className="mt-6 flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-          <Loader2 className="size-4 animate-spin" /> Analyzing regional regulator guidelines...
-        </div>
+      <div className="max-w-5xl mx-auto pb-16">
+        <GenericWorkspaceSkeleton />
       </div>
     )
   }

@@ -68,13 +68,13 @@ export function StartupWizard() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-zinc-200 bg-white p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-10 transition-all duration-500 hover:shadow-2xl font-sans">
+    <div className="mx-auto max-w-2xl rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-5 sm:p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-10 transition-all duration-500 hover:shadow-2xl font-sans">
       <div className="flex items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-green-100 text-green-700 dark:bg-green-950/50 shadow-sm shrink-0">
           <Sparkles className="size-6 text-green-700 dark:text-green-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl lg:text-3xl">
             Let&apos;s build your co-founder engine
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
@@ -83,14 +83,14 @@ export function StartupWizard() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+      <form onSubmit={handleSubmit} className="mt-6 sm:mt-8 space-y-5 sm:space-y-6">
         {error && (
           <div className="rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-100 dark:border-red-900/30 shadow-sm">
             {error}
           </div>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           <div>
             <label
               htmlFor="name"
@@ -145,7 +145,7 @@ export function StartupWizard() {
           />
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-3">
           <div>
             <label
               htmlFor="country"
@@ -228,7 +228,7 @@ export function StartupWizard() {
         <button
           type="submit"
           disabled={loading}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-green-700 font-semibold text-white transition-all duration-300 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-md shadow-green-900/15"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-green-700 font-semibold text-white transition-all duration-300 hover:bg-green-800 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-md shadow-green-900/15 text-sm sm:text-base"
         >
           {loading ? (
             <>

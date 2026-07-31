@@ -92,7 +92,7 @@ export function WeeklyFocusCard({
   }
 
   return (
-    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+    <section className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 lg:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex flex-col gap-4 border-b border-zinc-100 pb-5 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">

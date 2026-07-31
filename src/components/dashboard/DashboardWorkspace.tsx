@@ -62,7 +62,7 @@ export function DashboardWorkspace({
   const [copilotLoading, setCopilotLoading] = React.useState(false)
 
   const chatListRef = React.useRef<HTMLDivElement>(null)
-  const shouldStickChat = React.useRef(false)
+  const userScrolledUp = React.useRef(false)
 
   const completed = tasks.filter((t) => t.done).length
   const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
@@ -101,14 +101,22 @@ export function DashboardWorkspace({
     setCopilotMessages(initialMessages)
   }, [initialMessages])
 
-  // Only scroll the chat panel after the user sends / gets a reply — never on refresh sync
+  // Auto-scroll to bottom whenever messages change, unless user has scrolled up
   React.useEffect(() => {
-    if (!shouldStickChat.current) return
     const list = chatListRef.current
     if (!list) return
-    list.scrollTop = list.scrollHeight
-    if (!copilotLoading) shouldStickChat.current = false
+    if (!userScrolledUp.current) {
+      list.scrollTop = list.scrollHeight
+    }
   }, [copilotMessages, copilotLoading])
+
+  // Track if the user scrolls up manually so we don't hijack their scroll position
+  function handleChatScroll() {
+    const list = chatListRef.current
+    if (!list) return
+    const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight
+    userScrolledUp.current = distanceFromBottom > 60
+  }
 
   async function handleToggle(taskId: string, currentStatus: boolean) {
     setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, done: !currentStatus } : t)))
@@ -140,7 +148,8 @@ export function DashboardWorkspace({
       content: prompt,
     }
 
-    shouldStickChat.current = true
+    // Reset scroll flag so the chat snaps to the new message
+    userScrolledUp.current = false
     setCopilotMessages((prev) => [...prev, userMsg])
     setQuestion("")
     setCopilotLoading(true)
@@ -163,9 +172,9 @@ export function DashboardWorkspace({
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-12 font-sans max-w-7xl mx-auto w-full overflow-x-hidden">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-10 sm:pb-12 font-sans max-w-7xl mx-auto w-full overflow-x-hidden">
       {/* Header Banner */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-green-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-green-700 dark:bg-green-950/60 dark:text-green-300">
@@ -173,7 +182,7 @@ export function DashboardWorkspace({
             </span>
             <span className="text-xs text-zinc-400">&bull; {startup.city || startup.country_code || "Africa"}</span>
           </div>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+          <h1 className="mt-1 text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white sm:text-2xl lg:text-3xl">
             {startup.name}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
@@ -190,8 +199,8 @@ export function DashboardWorkspace({
       </div>
 
       {/* Progress & Focus Metrics */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-green-900 via-green-900 to-emerald-950 p-6 sm:p-8 text-white shadow-lg lg:col-span-7 flex flex-col justify-between">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-linear-to-br from-green-900 via-green-900 to-emerald-950 p-5 sm:p-6 lg:p-8 text-white shadow-lg lg:col-span-7 flex flex-col justify-between">
           <div className="absolute -right-8 -top-8 size-48 rounded-full bg-green-400/10 blur-xl pointer-events-none" />
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-sm space-y-3">
@@ -204,7 +213,7 @@ export function DashboardWorkspace({
                   Derived
                 </span>
               </div>
-              <h2 className="text-4xl font-extrabold tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 {healthScore}
                 <span className="text-lg text-green-200 font-normal">/100</span>
               </h2>
@@ -216,7 +225,7 @@ export function DashboardWorkspace({
                 </p>
               )}
             </div>
-            <div className="flex size-32 shrink-0 items-center justify-center rounded-full border-8 border-green-400/20 bg-white/5 text-center sm:self-center">
+            <div className="flex size-24 sm:size-32 shrink-0 items-center justify-center rounded-full border-8 border-green-400/20 bg-white/5 text-center sm:self-center">
               <div>
                 <span className="block text-2xl font-bold">{progress}%</span>
                 <span className="text-[10px] text-green-100/70 uppercase font-semibold tracking-wider">Milestones</span>
@@ -225,7 +234,7 @@ export function DashboardWorkspace({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-5 space-y-5">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-5 space-y-4 sm:space-y-5">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div>
               <h3 className="font-bold text-zinc-900 dark:text-white text-base">Launch readiness signals</h3>
@@ -274,8 +283,8 @@ export function DashboardWorkspace({
       <WeeklyFocusCard projectId={project.id} initialPlan={weeklyFocus} />
 
       {/* Action Items List */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-8 space-y-6">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-8 space-y-4 sm:space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="size-5 text-green-700" />
@@ -355,7 +364,7 @@ export function DashboardWorkspace({
         </div>
 
         {/* Right Sidebar Info */}
-        <aside className="lg:col-span-4 space-y-6">
+        <aside className="lg:col-span-4 space-y-4">
           <div className="rounded-3xl border border-zinc-200 border-l-4 border-l-amber-500 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-3">
             <div className="flex items-center gap-2">
               <Lightbulb className="size-5 text-amber-500" />
@@ -382,8 +391,8 @@ export function DashboardWorkspace({
       </section>
 
       {/* Business Health & AI Recommendations */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-green-700">Health Score</p>
@@ -413,7 +422,7 @@ export function DashboardWorkspace({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-linear-to-br from-green-800 to-emerald-950 p-6 text-white shadow-lg lg:col-span-6 space-y-4">
+        <div className="rounded-2xl sm:rounded-3xl bg-linear-to-br from-green-800 to-emerald-950 p-4 sm:p-6 text-white shadow-lg lg:col-span-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-green-700/50 pb-3">
             <Sparkles className="size-5 text-green-300" />
             <h3 className="font-bold text-base">AI Strategic Recommendations</h3>
@@ -430,8 +439,8 @@ export function DashboardWorkspace({
       </section>
 
       {/* Documents & Quick Actions */}
-      <section className="grid gap-6 lg:grid-cols-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <FileText className="size-5 text-green-700" />
@@ -469,7 +478,7 @@ export function DashboardWorkspace({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
+        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 pb-3 dark:border-zinc-800">
             <Zap className="size-5 text-amber-500" />
             <h3 className="font-bold text-zinc-900 dark:text-white text-base">Quick Actions</h3>
@@ -495,7 +504,7 @@ export function DashboardWorkspace({
       {/* Live Copilot Chat Section */}
       <section
         id="copilot"
-        className="rounded-3xl border border-green-200 bg-white p-6 shadow-md dark:border-green-900/40 dark:bg-zinc-900 sm:p-8 space-y-6"
+        className="rounded-2xl sm:rounded-3xl border border-green-200 bg-white p-4 sm:p-6 lg:p-8 shadow-md dark:border-green-900/40 dark:bg-zinc-900 space-y-4 sm:space-y-6"
       >
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
           <div className="flex items-center gap-3">
@@ -512,7 +521,8 @@ export function DashboardWorkspace({
         {/* Message history */}
         <div
           ref={chatListRef}
-          className="max-h-[min(520px,55vh)] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin]"
+          onScroll={handleChatScroll}
+          className="max-h-[min(420px,50vh)] sm:max-h-[min(520px,55vh)] space-y-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]"
         >
           {copilotMessages.filter((m) => m.role !== "system").length === 0 && !copilotLoading && (
             <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50">
@@ -551,13 +561,13 @@ export function DashboardWorkspace({
           )}
         </div>
 
-        <form onSubmit={handleAskCopilot} className="flex gap-3">
+        <form onSubmit={handleAskCopilot} className="flex gap-2 sm:gap-3">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask your copilot anything about your business..."
-            className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+            placeholder="Ask your copilot..."
+            className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 sm:px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
           />
           <button
             type="submit"
