@@ -5,6 +5,21 @@ interface RateLimitOptions {
   windowSeconds: number;
 }
 
+export const AI_RATE_LIMIT_EVENT = "ai_generation";
+
+export const AI_RATE_LIMIT = {
+  maxRequests: 20,
+  windowSeconds: 60,
+} as const;
+
+export const AI_RATE_LIMIT_MESSAGE =
+  "You're sending AI requests a bit fast — please wait a moment and try again.";
+
+/** Per-user AI call rate limit (20 requests per 60 seconds). */
+export async function checkAiRateLimit(userId: string) {
+  return checkRateLimit(userId, AI_RATE_LIMIT_EVENT, AI_RATE_LIMIT);
+}
+
 /**
  * Per-user rate limiting backed by usage_events. Uses the admin client
  * deliberately — usage_events only has a SELECT policy scoped to
@@ -28,7 +43,7 @@ export async function checkRateLimit(
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("event_name", eventName)
-    .gte("created_at", windowStart);
+    .gte("occurred_at", windowStart);
 
   if (error) {
     console.log("[rate-limit] count failed:", error.message);

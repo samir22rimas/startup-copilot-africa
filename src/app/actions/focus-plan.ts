@@ -7,6 +7,7 @@ import {
   readWeeklyFocusPlan,
   type WeeklyFocusPlan,
 } from "@/src/lib/focus-plan"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
@@ -37,7 +38,7 @@ async function getOwnedProject(projectId: string) {
       ? (project.metadata as Record<string, unknown>)
       : {}
 
-  return { supabase, startup, project, metadata }
+  return { supabase, user, startup, project, metadata }
 }
 
 function tasksFromMetadata(metadata: Record<string, unknown>) {
@@ -101,7 +102,7 @@ export async function regenerateWeeklyFocusPlan(
   const owned = await getOwnedProject(projectId)
   if ("error" in owned) return { success: false, error: owned.error ?? "Unknown error" }
 
-  const { supabase, startup, project, metadata } = owned
+  const { supabase, user, startup, project, metadata } = owned
   const tasks = tasksFromMetadata(metadata)
 
   if (mode === "derived") {
@@ -132,6 +133,11 @@ Description: ${project.description || "N/A"}
 Audience: ${project.target_audience || "N/A"}
 Incomplete milestones:
 ${incomplete || "(none — invent 3 practical launch priorities)"}`
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+  }
 
   try {
     const { generateTextWithFallback } = await import("@/src/lib/ai-providers")

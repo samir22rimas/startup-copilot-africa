@@ -1,5 +1,6 @@
 "use server"
 
+import { getAfricanCountryCurrency } from "@/src/lib/african-countries"
 import { createProject, upsertAiConfig } from "@/src/features/business/services/project.service"
 import { completeOnboarding, createStartup } from "@/src/features/business/services/startup.service"
 import { revalidatePath } from "next/cache"
@@ -43,6 +44,7 @@ export async function completeOnboardingWizard(
     estimated_budget_cents: input.estimatedBudgetUsd
       ? Math.round(input.estimatedBudgetUsd * 100)
       : null,
+    budget_currency: getAfricanCountryCurrency(input.countryCode),
   })
   if (!startup) {
     return { success: false, error: error || "Couldn't create your startup. Please try again." }

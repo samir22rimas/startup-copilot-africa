@@ -1,6 +1,7 @@
 "use server";
 
 import { generateNextInterviewQuestion } from "@/src/features/interview/services/openai";
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter";
 import { supabaseAdmin } from "@/src/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -163,6 +164,15 @@ export async function submitInterviewAnswer(
 
   const supabase = await createSupabaseServerClient();
   const user = await getAuthenticatedUser(supabase);
+
+  const rateLimit = await checkAiRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    return {
+      error: AI_RATE_LIMIT_MESSAGE,
+      estimatedCompleteness: 0,
+      isCompleted: false,
+    };
+  }
 
   // 1. Insert user message
   const { error: insertUserErr } = await supabase.from("messages").insert({

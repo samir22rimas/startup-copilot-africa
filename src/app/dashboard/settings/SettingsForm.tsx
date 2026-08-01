@@ -4,6 +4,11 @@ import * as React from "react"
 import { User, Building2, Save, Loader2, Check } from "lucide-react"
 import { updateStartupSettings, updateUserSettings } from "@/src/app/actions/settings"
 import type { StartupStage } from "@/src/lib/database.types"
+import {
+  AFRICAN_COUNTRIES,
+  formatAfricanCountryOption,
+  getAfricanCountryCurrency,
+} from "@/src/lib/african-countries"
 import { useRouter } from "next/navigation"
 
 const STAGES: { value: StartupStage; label: string }[] = [
@@ -202,12 +207,20 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
           <TextField label="Full Name" value={fullName} onChange={setFullName} placeholder="e.g. Samir Rimas" />
           <TextField label="Phone Number" value={phone} onChange={setPhone} placeholder="+254 700 000 000" />
           <TextField label="City / Location" value={city} onChange={setCity} placeholder="e.g. Nairobi" />
-          <TextField
-            label="Country Code (2 Letters)"
-            value={countryCode}
-            onChange={(v) => setCountryCode(v.toUpperCase().slice(0, 2))}
-            placeholder="e.g. KE, NG, ZA"
-          />
+          <Field label="Country">
+            <select
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value)}
+              className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+            >
+              <option value="">Select country</option>
+              {AFRICAN_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {formatAfricanCountryOption(c)}
+                </option>
+              ))}
+            </select>
+          </Field>
           <TextField label="Timezone" value={timezone} onChange={setTimezone} placeholder="e.g. Africa/Nairobi" />
         </div>
 
@@ -249,12 +262,24 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
             <TextField label="Startup Name" value={startupName} onChange={setStartupName} placeholder="Your company" />
             <TextField label="Industry / Sector" value={industry} onChange={setIndustry} placeholder="e.g. Fintech" />
             <TextField label="City" value={startupCity} onChange={setStartupCity} placeholder="e.g. Lagos" />
-            <TextField
-              label="Country Code"
-              value={startupCountry}
-              onChange={(v) => setStartupCountry(v.toUpperCase().slice(0, 2))}
-              placeholder="NG"
-            />
+            <Field label="Country">
+              <select
+                value={startupCountry}
+                onChange={(e) => {
+                  const code = e.target.value
+                  setStartupCountry(code)
+                  setBudgetCurrency(getAfricanCountryCurrency(code, budgetCurrency))
+                }}
+                className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="">Select country</option>
+                {AFRICAN_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {formatAfricanCountryOption(c)}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
             <Field label="Stage">
               <select

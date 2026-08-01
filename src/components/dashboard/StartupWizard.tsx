@@ -2,20 +2,12 @@
 
 import { createStartupAndFirstProject } from "@/src/app/actions/dashboard";
 import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import {
+  AFRICAN_COUNTRIES,
+  formatAfricanCountryOption,
+  getAfricanCountryCurrency,
+} from "@/src/lib/african-countries";
 import * as React from "react";
-
-const AFRICAN_COUNTRIES = [
-  { code: "KE", name: "Kenya (KES)", currency: "KES" },
-  { code: "NG", name: "Nigeria (NGN)", currency: "NGN" },
-  { code: "GH", name: "Ghana (GHS)", currency: "GHS" },
-  { code: "CM", name: "Cameroon (CMR)", currency: "CMR" },
-  { code: "ZA", name: "South Africa (ZAR)", currency: "ZAR" },
-  { code: "EG", name: "Egypt (EGP)", currency: "EGP" },
-  { code: "MA", name: "Morocco (MAD)", currency: "MAD" },
-  { code: "RW", name: "Rwanda (RWF)", currency: "RWF" },
-  { code: "TZ", name: "Tanzania (TZS)", currency: "TZS" },
-  { code: "UG", name: "Uganda (UGX)", currency: "UGX" },
-];
 
 export function StartupWizard() {
   const [loading, setLoading] = React.useState(false);
@@ -29,8 +21,7 @@ export function StartupWizard() {
   const [industry, setIndustry] = React.useState("Agriculture");
   const [budgetAmount, setBudgetAmount] = React.useState("1000");
 
-  const selectedCountry = AFRICAN_COUNTRIES.find((c) => c.code === countryCode);
-  const currency = selectedCountry?.currency || "USD";
+  const currency = getAfricanCountryCurrency(countryCode);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -161,7 +152,7 @@ export function StartupWizard() {
             >
               {AFRICAN_COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.name}
+                  {formatAfricanCountryOption(c)}
                 </option>
               ))}
             </select>

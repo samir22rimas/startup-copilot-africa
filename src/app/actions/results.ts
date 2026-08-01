@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { generateTextWithFallback } from "@/src/lib/ai-providers"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
 import { revalidatePath } from "next/cache"
 
 export type ResultDocumentType = "Business Plan" | "SWOT" | "Budget" | "Marketing Strategy" | "Roadmap" | "Elevator Pitch"
@@ -111,6 +112,11 @@ export async function generateResultsWorkspace(projectId: string): Promise<{ suc
     .eq("startup_id", startup.id)
     .maybeSingle()
   if (!project) return { success: false, error: "This project is not available to you." }
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+  }
 
   const generatedDocuments = await createAiDocuments({
       name: startup.name,

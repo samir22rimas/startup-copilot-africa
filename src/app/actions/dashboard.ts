@@ -8,7 +8,7 @@ import {
   createStartup,
   getMyStartup,
 } from "@/src/features/business/services/startup.service";
-import { checkRateLimit } from "@/src/lib/rate-limiter";
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter";
 import { supabaseAdmin } from "@/src/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -432,6 +432,7 @@ function buildMarketingOverview(
 
 // Task generation
 async function generateInitialTasks(
+  userId: string,
   projectId: string,
   startup: {
     name: string;
@@ -459,25 +460,37 @@ Description: ${project.description || "N/A"}`;
 
   let tasks: DashboardTask[];
 
-  try {
-    const { generateTextWithFallback } = await import("@/src/lib/ai-providers");
-    const response = await generateTextWithFallback(systemPrompt, [], {
-      maxTokens: 800,
-      temperature: 0.6,
-    });
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-
-    tasks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-  } catch (error: any) {
-    console.error("Failed to generate initial tasks with AI", error);
+  const rateLimit = await checkAiRateLimit(userId);
+  if (!rateLimit.allowed) {
     tasks = [
       {
-        id: "error",
-        title: `Failed to generate personalized tasks. Check your AI provider configuration. Error: ${error.message || "Unknown"}`,
-        tag: "Error",
+        id: "rate_limited",
+        title: AI_RATE_LIMIT_MESSAGE,
+        tag: "Setup",
         done: false,
       },
     ];
+  } else {
+    try {
+      const { generateTextWithFallback } = await import("@/src/lib/ai-providers");
+      const response = await generateTextWithFallback(systemPrompt, [], {
+        maxTokens: 800,
+        temperature: 0.6,
+      });
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+
+      tasks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    } catch (error: any) {
+      console.error("Failed to generate initial tasks with AI", error);
+      tasks = [
+        {
+          id: "error",
+          title: `Failed to generate personalized tasks. Check your AI provider configuration. Error: ${error.message || "Unknown"}`,
+          tag: "Error",
+          done: false,
+        },
+      ];
+    }
   }
 
   if (tasks.length === 0) {
@@ -558,7 +571,7 @@ export async function getDashboardData() {
         done: false,
       },
     ];
-    generateInitialTasks(project.id, startup, project).catch((err) =>
+    generateInitialTasks(user.id, project.id, startup, project).catch((err) =>
       console.error("Background task generation failed: ", err),
     );
   }
@@ -860,14 +873,9 @@ export async function sendStatefulCopilotMessage(
     throw new Error("You must be signed in.");
   }
 
-  const rateLimit = await checkRateLimit(user.id, "ai_generation", {
-    maxRequests: 20,
-    windowSeconds: 60,
-  });
+  const rateLimit = await checkAiRateLimit(user.id);
   if (!rateLimit.allowed) {
-    throw new Error(
-      "You're sending messages a bit fast - please wait a moment and try again",
-    );
+    throw new Error(AI_RATE_LIMIT_MESSAGE);
   }
 
   // 1. Insert user message

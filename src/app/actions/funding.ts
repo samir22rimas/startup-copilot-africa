@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter";
 import { revalidatePath } from "next/cache";
 import type { Json } from "@/src/lib/database.types"
 
@@ -130,6 +131,11 @@ export async function generateFundingWorkspace(
 
   const budgetDollars = (startup.estimated_budget_cents || 0) / 100;
   const currency = startup.budget_currency || "USD";
+
+  const rateLimit = await checkAiRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE };
+  }
 
   const systemPrompt = `You are an expert Startup Advisor and VC for African startups.
 Generate a realistic funding projection and opportunity list for this startup.

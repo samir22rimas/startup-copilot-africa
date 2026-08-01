@@ -6,6 +6,7 @@ import {
   readMetadata,
   readTrackedMetrics,
 } from "@/src/lib/data-truth"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
@@ -84,6 +85,11 @@ Founder-reported (tracked) metrics — use as anchors for a realistic projection
 - Visitors this month: ${tracked.visitorsThisMonth}
 `
     : "No founder-tracked metrics yet — clearly invent a conservative early-stage scenario."
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+  }
 
   const systemPrompt = `You are an expert Data Scientist advising African startups.
 Generate a realistic 6-month analytics PROJECTION (forecast / scenario) — NOT live tracked data.

@@ -1,0 +1,83 @@
+/** ISO 3166-1 alpha-2 + ISO 4217 currency codes for African markets. */
+export type AfricanCountry = {
+  code: string
+  name: string
+  currency: string
+}
+
+export const AFRICAN_COUNTRIES: AfricanCountry[] = [
+  { code: "DZ", name: "Algeria", currency: "DZD" },
+  { code: "AO", name: "Angola", currency: "AOA" },
+  { code: "BJ", name: "Benin", currency: "XOF" },
+  { code: "BW", name: "Botswana", currency: "BWP" },
+  { code: "BF", name: "Burkina Faso", currency: "XOF" },
+  { code: "BI", name: "Burundi", currency: "BIF" },
+  { code: "CV", name: "Cabo Verde", currency: "CVE" },
+  { code: "CM", name: "Cameroon", currency: "XAF" },
+  { code: "CF", name: "Central African Republic", currency: "XAF" },
+  { code: "TD", name: "Chad", currency: "XAF" },
+  { code: "KM", name: "Comoros", currency: "KMF" },
+  { code: "CG", name: "Congo", currency: "XAF" },
+  { code: "CD", name: "Democratic Republic of the Congo", currency: "CDF" },
+  { code: "CI", name: "Côte d'Ivoire", currency: "XOF" },
+  { code: "DJ", name: "Djibouti", currency: "DJF" },
+  { code: "EG", name: "Egypt", currency: "EGP" },
+  { code: "GQ", name: "Equatorial Guinea", currency: "XAF" },
+  { code: "ER", name: "Eritrea", currency: "ERN" },
+  { code: "SZ", name: "Eswatini", currency: "SZL" },
+  { code: "ET", name: "Ethiopia", currency: "ETB" },
+  { code: "GA", name: "Gabon", currency: "XAF" },
+  { code: "GM", name: "Gambia", currency: "GMD" },
+  { code: "GH", name: "Ghana", currency: "GHS" },
+  { code: "GN", name: "Guinea", currency: "GNF" },
+  { code: "GW", name: "Guinea-Bissau", currency: "XOF" },
+  { code: "KE", name: "Kenya", currency: "KES" },
+  { code: "LS", name: "Lesotho", currency: "LSL" },
+  { code: "LR", name: "Liberia", currency: "LRD" },
+  { code: "LY", name: "Libya", currency: "LYD" },
+  { code: "MG", name: "Madagascar", currency: "MGA" },
+  { code: "MW", name: "Malawi", currency: "MWK" },
+  { code: "ML", name: "Mali", currency: "XOF" },
+  { code: "MR", name: "Mauritania", currency: "MRU" },
+  { code: "MU", name: "Mauritius", currency: "MUR" },
+  { code: "MA", name: "Morocco", currency: "MAD" },
+  { code: "MZ", name: "Mozambique", currency: "MZN" },
+  { code: "NA", name: "Namibia", currency: "NAD" },
+  { code: "NE", name: "Niger", currency: "XOF" },
+  { code: "NG", name: "Nigeria", currency: "NGN" },
+  { code: "RW", name: "Rwanda", currency: "RWF" },
+  { code: "ST", name: "São Tomé and Príncipe", currency: "STN" },
+  { code: "SN", name: "Senegal", currency: "XOF" },
+  { code: "SC", name: "Seychelles", currency: "SCR" },
+  { code: "SL", name: "Sierra Leone", currency: "SLE" },
+  { code: "SO", name: "Somalia", currency: "SOS" },
+  { code: "ZA", name: "South Africa", currency: "ZAR" },
+  { code: "SS", name: "South Sudan", currency: "SSP" },
+  { code: "SD", name: "Sudan", currency: "SDG" },
+  { code: "TZ", name: "Tanzania", currency: "TZS" },
+  { code: "TG", name: "Togo", currency: "XOF" },
+  { code: "TN", name: "Tunisia", currency: "TND" },
+  { code: "UG", name: "Uganda", currency: "UGX" },
+  { code: "ZM", name: "Zambia", currency: "ZMW" },
+  { code: "ZW", name: "Zimbabwe", currency: "USD" },
+]
+
+const byCode = new Map(AFRICAN_COUNTRIES.map((c) => [c.code, c]))
+
+export function getAfricanCountry(code: string | null | undefined): AfricanCountry | undefined {
+  if (!code) return undefined
+  return byCode.get(code.trim().toUpperCase())
+}
+
+export function getAfricanCountryName(code: string | null | undefined): string {
+  return getAfricanCountry(code)?.name ?? code?.toUpperCase() ?? "Africa"
+}
+
+export function getAfricanCountryCurrency(code: string | null | undefined, fallback = "USD"): string {
+  return getAfricanCountry(code)?.currency ?? fallback
+}
+
+/** Label for country pickers: "Kenya (KES)" */
+export function formatAfricanCountryOption(country: AfricanCountry): string {
+  return `${country.name} (${country.currency})`
+}

@@ -1,6 +1,7 @@
 "use server"
 
 import { generateTextWithFallback } from "@/src/lib/ai-providers"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 export type GenerateContentInput = {
@@ -32,6 +33,11 @@ export async function generateMarketingContent(
 
   if (!input.prompt || input.prompt.trim().length < 3) {
     return { success: false, error: "Please provide a topic or prompt." }
+  }
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
   }
 
   const platform = input.platform ?? "linkedin"
@@ -103,6 +109,11 @@ export async function sendChatMessage(
 
   if (!messages.length) {
     return { success: false, error: "No messages provided." }
+  }
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
   }
 
   const systemPrompt = systemContext

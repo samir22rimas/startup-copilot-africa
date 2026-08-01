@@ -5,6 +5,11 @@ import { Input } from "@/src/components/ui/input"
 import { Label } from "@/src/components/ui/label"
 import { Select } from "@/src/components/ui/select"
 import { Slider } from "@/src/components/ui/slider"
+import {
+  AFRICAN_COUNTRIES,
+  formatAfricanCountryOption,
+  getAfricanCountryCurrency,
+} from "@/src/lib/african-countries"
 import type { OnboardingInput } from "@/src/features/business/actions"
 
 interface Step1CompanyProps {
@@ -15,10 +20,11 @@ interface Step1CompanyProps {
 
 export function Step1Company({ data, onChange, onNext }: Step1CompanyProps) {
   const budget = data.estimatedBudgetUsd ?? 0
+  const currency = getAfricanCountryCurrency(data.countryCode)
 
-  const formattedBudget = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  const formattedBudget = new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: currency.length === 3 ? currency : "USD",
     maximumFractionDigits: 0,
   }).format(budget)
 
@@ -54,12 +60,14 @@ export function Step1Company({ data, onChange, onNext }: Step1CompanyProps) {
               value={data.countryCode}
               onChange={(e) => onChange("countryCode", e.target.value)}
             >
-              <option value="" disabled hidden>Select Country</option>
-              <option value="KE">Kenya</option>
-              <option value="NG">Nigeria</option>
-              <option value="CM">Cameroon</option>
-              <option value="ZA">South Africa</option>
-              <option value="RW">Rwanda</option>
+              <option value="" disabled hidden>
+                Select Country
+              </option>
+              {AFRICAN_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {formatAfricanCountryOption(c)}
+                </option>
+              ))}
             </Select>
           </div>
           <div className="space-y-2">
@@ -90,7 +98,7 @@ export function Step1Company({ data, onChange, onNext }: Step1CompanyProps) {
 
         <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
-            <Label>ESTIMATED BUDGET (USD)</Label>
+            <Label>ESTIMATED BUDGET ({currency})</Label>
             <span className="text-sm font-bold text-green-700 dark:text-green-500">
               {formattedBudget}
             </span>

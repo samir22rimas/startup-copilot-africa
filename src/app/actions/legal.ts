@@ -1,6 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
+import { getAfricanCountryName } from "@/src/lib/african-countries"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 export interface LegalLicense {
@@ -82,20 +84,12 @@ export async function generateLegalComplianceWorkspace(projectId: string): Promi
     return { success: true, workspace: metadata.legal_workspace as LegalWorkspace }
   }
 
-  const countryNames: Record<string, string> = {
-    KE: "Kenya",
-    NG: "Nigeria",
-    GH: "Ghana",
-    ZA: "South Africa",
-    EG: "Egypt",
-    MA: "Morocco",
-    RW: "Rwanda",
-    TZ: "Tanzania",
-    UG: "Uganda",
-    CM: "Cameroon",
-  }
+  const countryName = getAfricanCountryName(startup.country_code)
 
-  const countryName = countryNames[startup.country_code] || startup.country_code
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+  }
 
   const systemPrompt = `You are a Senior Corporate Lawyer and Regulatory Compliance Specialist specializing in African business incorporation and licensing.
 Analyze the legal, licensing, tax, and regulatory compliance requirements for this startup in ${countryName}.

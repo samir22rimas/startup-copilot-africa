@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { generateTextWithFallback } from "@/src/lib/ai-providers"
+import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
 import type { Json } from "@/src/lib/database.types"
 
 export type PitchDeckSlide = {
@@ -62,6 +63,11 @@ export async function generatePitchDeck(projectId: string): Promise<{ success: t
   if (!startup) return { success: false, error: "Your startup could not be found." }
   const { data: project } = await supabase.from("projects").select("id, title, description, target_audience, metadata").eq("id", projectId).eq("startup_id", startup.id).maybeSingle()
   if (!project) return { success: false, error: "This project is not available to you." }
+
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (!rateLimit.allowed) {
+    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+  }
 
   const context = { startup: startup.name, title: project.title, description: project.description || "", audience: project.target_audience || "", location: [startup.city, startup.country_code].filter(Boolean).join(", ") || "your launch market", currency: startup.budget_currency || "USD" }
   let response: string
