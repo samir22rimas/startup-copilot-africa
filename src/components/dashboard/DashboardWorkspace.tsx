@@ -554,7 +554,7 @@ export function DashboardWorkspace({
           {copilotLoading && (
             <div className="flex justify-start">
               <div className="flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-3 text-xs text-zinc-500 dark:bg-zinc-800">
-                <Loader2 className="size-4 animate-spin text-green-600" />
+                <Loader2 className="size-4 animate-ping text-green-600" />
                 Copilot is thinking...
               </div>
             </div>

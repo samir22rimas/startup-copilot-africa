@@ -1,4 +1,4 @@
--- Startup Copilot Africa: initial production schema
+-- Anza: initial production schema
 -- Apply with: supabase db push (or paste into the Supabase SQL Editor once).
 
 create extension if not exists "pgcrypto";

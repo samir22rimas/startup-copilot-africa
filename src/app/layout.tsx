@@ -3,7 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/src/providers/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Startup Copilot Africa",
+  title: "Anza",
   description: "AI-powered guidance for African founders.",
 };
 

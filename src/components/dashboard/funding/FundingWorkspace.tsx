@@ -41,15 +41,10 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
   const dilutionPercent = valuation > 0 ? parseFloat(((fundingGoal / (valuation + fundingGoal)) * 100).toFixed(1)) : 0
 
   React.useEffect(() => {
-    if (!workspace) {
+    if (!initialWorkspace) {
       handleGenerate()
-    } else {
-      setCashBalance(workspace.cashBalance)
-      setMonthlyBurn(workspace.monthlyBurn)
-      setFundingGoal(workspace.fundingGoal)
-      setValuation(workspace.valuation)
     }
-  }, [workspace])
+  }, []) // run once on mount if initialWorkspace is missing
 
   async function handleGenerate() {
     setIsGenerating(true)

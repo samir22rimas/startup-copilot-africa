@@ -14,8 +14,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         <div className="relative z-10 flex-1 flex flex-col justify-between">
           <div>
             <div className="font-bold text-white text-lg tracking-tight mb-20 transition-transform hover:scale-[1.01]">
-              Startup Copilot 
-              <span className="text-green-400"> Africa</span> 
+              <span className="text-green-400"> A</span>nza
             </div>
             
             <h1 className="text-5xl font-extrabold leading-[1.15] mb-12 max-w-lg tracking-tight">

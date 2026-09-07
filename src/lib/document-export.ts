@@ -54,7 +54,7 @@ export function buildResultsExportHtml(input: {
     .join("")
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(input.title)}</title><style>${PRINT_STYLES}</style></head><body>
-<section class="cover"><h1>${escapeHtml(input.startupName)}</h1><h2>${escapeHtml(input.title)}</h2><p class="meta">Generated ${escapeHtml(new Date(input.generatedAt).toLocaleDateString())} · ${input.sections.length} section${input.sections.length === 1 ? "" : "s"}</p><p>Startup Copilot Africa — for review, discussion, and iteration.</p></section>
+<section class="cover"><h1>${escapeHtml(input.startupName)}</h1><h2>${escapeHtml(input.title)}</h2><p class="meta">Generated ${escapeHtml(new Date(input.generatedAt).toLocaleDateString())} · ${input.sections.length} section${input.sections.length === 1 ? "" : "s"}</p><p>Anza — for review, discussion, and iteration.</p></section>
 ${body}
 </body></html>`
 }

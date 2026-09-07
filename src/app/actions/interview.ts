@@ -94,7 +94,7 @@ export async function getOrCreateInterviewConversation(projectId: string) {
       .eq("id", project.startup_id)
       .single();
 
-    const initialWelcome = `Habari! Welcome to Startup Copilot Africa. I'm your AI co-founder. Let's build something great. I see you are starting a project called "${project.title}" (${project.description || "No description provided yet"}). To help tailor this business plan for the local market in ${startup?.city || "your city"}, ${startup?.country_code}, could you introduce yourself and tell me what inspired you to start this business?`;
+    const initialWelcome = `Habari! Welcome to Anza. I'm your AI co-founder. Let's build something great. I see you are starting a project called "${project.title}" (${project.description || "No description provided yet"}). To help tailor this business plan for the local market in ${startup?.city || "your city"}, ${startup?.country_code}, could you introduce yourself and tell me what inspired you to start this business?`;
 
     // Store welcome message via admin client (bypasses RLS: only role='user' allowed for regular users)
     const { error: insertError } = await supabaseAdmin.from("messages").insert({

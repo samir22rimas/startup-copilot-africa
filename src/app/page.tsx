@@ -49,17 +49,17 @@ export default function Home() {
             <Link
               href="/"
               className="flex items-center gap-1.5 font-semibold tracking-tight transition-transform hover:scale-[1.02]"
-              aria-label="Startup Copilot Africa home"
+              aria-label="Anza home"
             >
               <Image
                 src="/logo.png"
-                alt="Startup Copilot Africa"
+                alt="Anza"
                 width={40}
                 height={40}
                 className="size-10 sm:size-14 rounded-xl object-contain"
               />
               <span className="text-sm sm:text-base">
-                Startup Copilot <span className="text-green-300 font-bold">Africa</span>
+                <span className="text-green-300 font-bold">A</span>nza
               </span>
             </Link>
 
@@ -216,7 +216,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-green-100 bg-[#fbfdfb] px-5 sm:px-6 py-8 sm:py-10 text-xs sm:text-sm text-zinc-500 dark:border-green-900/40 dark:bg-zinc-950 dark:text-zinc-400">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 sm:flex-row items-center text-center sm:text-left">
-          <p>© {new Date().getFullYear()} Startup Copilot Africa. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Anza. All rights reserved.</p>
           <div className="flex flex-wrap justify-center sm:justify-end gap-4 sm:gap-6 items-center">
             <Link href="/terms" className="hover:text-green-800 transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-green-800 transition-colors">Privacy</Link>

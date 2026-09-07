@@ -11,6 +11,7 @@ import { getMyStartup } from "@/src/features/business/services/startup.service"
 import { getProjects } from "@/src/features/business/services/project.service"
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
 import { readActiveProjectCookie, resolveActiveProject } from "@/src/lib/active-project"
+import { FeedbackModal } from "@/src/components/shared/FeedbackModal"
 
 async function DashboardTopNav() {
   const supabase = await createSupabaseServerClient()
@@ -80,6 +81,8 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      <FeedbackModal />
     </div>
   )
 }

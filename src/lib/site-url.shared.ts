@@ -4,9 +4,9 @@ function stripTrailingSlash(url: string) {
 
 /** Client-side origin for OAuth redirects (falls back to the current browser origin). */
 export function getClientSiteUrl() {
+  if (typeof window !== "undefined") return window.location.origin
   const configured = process.env.NEXT_PUBLIC_SITE_URL
   if (configured) return stripTrailingSlash(configured)
-  if (typeof window !== "undefined") return window.location.origin
   return ""
 }
 

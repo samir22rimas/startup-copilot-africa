@@ -65,7 +65,7 @@ export function OnboardingLayout() {
         {/* Header */}
         <div className="mb-8 text-center space-y-6">
           <h1 className="text-xl font-bold text-green-900 dark:text-green-500 tracking-tight">
-            Startup Copilot Africa
+            Anza
           </h1>
 
           <div className="flex flex-col items-center gap-4">

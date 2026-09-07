@@ -360,6 +360,34 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      user_feedback: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          message: string;
+          rating: number | null;
+          page_url: string | null;
+          created_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["user_feedback"]["Row"],
+          "id" | "created_at"
+        > &
+          Partial<
+            Pick<
+              Database["public"]["Tables"]["user_feedback"]["Row"],
+              "id" | "created_at"
+            >
+          >;
+        Update: Partial<
+          Omit<
+            Database["public"]["Tables"]["user_feedback"]["Row"],
+            "id" | "user_id" | "created_at"
+          >
+        >;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -4,8 +4,8 @@ import { ArrowLeft, Lock, Database, Cpu, Eye, ShieldCheck, Mail } from "lucide-r
 import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
 
 export const metadata = {
-  title: "Privacy Policy | Startup Copilot Africa",
-  description: "Privacy Policy and Data Protection standards for Startup Copilot Africa.",
+  title: "Privacy Policy | Anza",
+  description: "Privacy Policy and Data Protection standards for Anza.",
 }
 
 export default function PrivacyPage() {
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
       id: "rights",
       icon: ShieldCheck,
       title: "5. Your Data Rights",
-      content: `As a founder on Startup Copilot Africa, you have full control over your personal data:
+      content: `As a founder on Anza, you have full control over your personal data:
       • Access & Export: You can access and export your generated business plans and strategy briefs at any time.
       • Account Deletion: You may request complete deletion of your account, database records, and workspace contents by contacting privacy@startupcopilot.africa.`,
     },
@@ -66,9 +66,9 @@ export default function PrivacyPage() {
       {/* Top Header */}
       <header className="border-b border-green-900/10 bg-[#082b22] text-white">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight transition-transform hover:scale-[1.01]" aria-label="Startup Copilot Africa home">
-            <Image src="/logo.png" alt="Startup Copilot Africa" width={40} height={40} className="size-10 rounded-xl object-contain" />
-            <span className="text-lg">Startup Copilot <span className="text-green-300 font-bold">Africa</span></span>
+          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight transition-transform hover:scale-[1.01]" aria-label="Anza home">
+            <Image src="/logo.png" alt="Anza" width={40} height={40} className="size-10 rounded-xl object-contain" />
+            <span className="text-lg"><span className="text-green-300 font-bold">A</span>nza</span>
           </Link>
 
           <div className="flex items-center gap-3">
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
 
         {/* Footer Link */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-green-100 pt-8 text-xs text-zinc-500 dark:border-green-900/40 dark:text-zinc-400">
-          <p>© {new Date().getFullYear()} Startup Copilot Africa. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Anza. All rights reserved.</p>
           <div className="flex items-center gap-4 font-semibold text-green-800 dark:text-green-400">
             <Link href="/terms" className="hover:underline">Terms of Service</Link>
             <span>•</span>

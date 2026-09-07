@@ -28,12 +28,12 @@ export function TopNav({ user }: TopNavProps) {
         >
           <Image
             src="/logo.png"
-            alt="Startup Copilot Africa"
+            alt="Anza"
             width={36}
             height={36}
             className="size-9 rounded-lg object-contain"
           />
-          <span className="hidden lg:inline">Startup Copilot Africa</span>
+          <span className="hidden lg:inline">Anza</span>
         </Link>
 
         <nav aria-label="Dashboard navigation" className="hidden items-center gap-6 md:flex">

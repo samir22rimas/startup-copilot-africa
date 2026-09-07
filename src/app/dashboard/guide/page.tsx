@@ -26,13 +26,13 @@ export default function UserGuidePage() {
       {/* Header */}
       <div className="rounded-3xl bg-linear-to-r from-green-900 via-green-800 to-emerald-900 p-8 text-white shadow-xl">
         <div className="flex items-center gap-3 text-green-300 font-semibold text-xs uppercase tracking-wider mb-2">
-          <BookOpen className="size-4" /> Startup Copilot Africa Guide
+          <BookOpen className="size-4" /> Anza Guide
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          How to Use Startup Copilot & Understand Your Metrics
+          How to Use Anza & Understand Your Metrics
         </h1>
         <p className="mt-3 text-base text-green-100/80 max-w-2xl leading-relaxed">
-          Welcome! This guide explains how to navigate Startup Copilot Africa, leverage our AI advisors, and read all the analytics, funding metrics, and strategic insights generated for your startup.
+          Welcome! This guide explains how to navigate Anza, leverage our AI advisors, and read all the analytics, funding metrics, and strategic insights generated for your startup.
         </p>
       </div>
 

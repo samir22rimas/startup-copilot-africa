@@ -1,6 +1,6 @@
 # Database setup
 
-This directory contains the source-controlled Supabase schema for Startup Copilot Africa.
+This directory contains the source-controlled Supabase schema for Anza.
 
 ## Apply the schema
 

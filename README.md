@@ -1,4 +1,4 @@
-# Startup Copilot Africa
+# Anza
 
 **Your AI Co-Founder for Building Businesses in Africa**
 
@@ -8,9 +8,9 @@ Built with ❤️ using **Next.js**, **TypeScript**, **Supabase**, **OpenAI GPT-
 
 ## Overview
 
-Startup Copilot Africa is an AI-powered platform that helps African entrepreneurs transform innovative ideas into validated businesses.
+Anza is an AI-powered platform that helps African entrepreneurs transform innovative ideas into validated businesses.
 
-Many founders across Africa have promising ideas but lack access to affordable mentorship, market research, and business expertise. Startup Copilot Africa bridges this gap by acting as an AI co-founder that guides entrepreneurs through every stage of their startup journey—from idea validation to business planning, market analysis, financial estimation, funding preparation, and growth strategy.
+Many founders across Africa have promising ideas but lack access to affordable mentorship, market research, and business expertise. Anza bridges this gap by acting as an AI co-founder that guides entrepreneurs through every stage of their startup journey—from idea validation to business planning, market analysis, financial estimation, funding preparation, and growth strategy.
 
 Our mission is to democratize startup support and empower the next generation of African innovators.
 
@@ -51,7 +51,7 @@ A centralized dashboard that includes:
 
 ### 🌍 African Market Focus
 
-Unlike generic AI assistants, Startup Copilot Africa is designed specifically for African entrepreneurs by considering:
+Unlike generic AI assistants, Anza is designed specifically for African entrepreneurs by considering:
 
 - African markets
 - Local business environments
@@ -155,7 +155,7 @@ git clone https://github.com/YOUR_USERNAME/startup-copilot-africa.git
 Navigate into the project.
 
 ```bash
-cd startup-copilot-africa
+cd anza
 ```
 
 Install dependencies.
@@ -224,7 +224,7 @@ Each module has a clear responsibility, making the project scalable and maintain
 
 # How We Used OpenAI Codex & GPT-5.6
 
-Startup Copilot Africa was developed with extensive support from **OpenAI Codex** and **GPT-5.6**, both during development and as core components of the application.
+Anza was developed with extensive support from **OpenAI Codex** and **GPT-5.6**, both during development and as core components of the application.
 
 ## OpenAI Codex
 
@@ -254,7 +254,7 @@ We used GPT-5.6 to:
 - Improve user experience.
 - Assist with debugging and technical decisions.
 
-### Inside Startup Copilot Africa
+### Inside Anza
 
 GPT-5.6 powers the AI assistant that enables entrepreneurs to:
 
@@ -307,7 +307,7 @@ https://youtu.be/zLvNpmTIBJM
 
 # Impact
 
-Startup Copilot Africa aims to democratize entrepreneurship across Africa by making high-quality startup guidance accessible to anyone with an idea.
+Anza aims to democratize entrepreneurship across Africa by making high-quality startup guidance accessible to anyone with an idea.
 
 By combining artificial intelligence with localized business knowledge, we help founders move from inspiration to execution faster and more confidently.
 

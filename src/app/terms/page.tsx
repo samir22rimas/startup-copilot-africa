@@ -12,9 +12,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service | Startup Copilot Africa",
+  title: "Terms of Service | Anza",
   description:
-    "Terms of Service and Conditions of Use for Startup Copilot Africa.",
+    "Terms of Service and Conditions of Use for Anza.",
 };
 
 export default function TermsPage() {
@@ -25,28 +25,28 @@ export default function TermsPage() {
       id: "acceptance",
       icon: UserCheck,
       title: "1. Acceptance of Terms",
-      content: `By accessing or using Startup Copilot Africa ("Platform", "we", "us", or "our"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services. These terms apply to all visitors, registered founders, team members, and users of the Platform.`,
+      content: `By accessing or using Anza ("Platform", "we", "us", or "our"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services. These terms apply to all visitors, registered founders, team members, and users of the Platform.`,
     },
     {
       id: "description",
       icon: FileText,
       title: "2. Description of Services",
-      content: `Startup Copilot Africa provides AI-assisted business planning, founder interviewing, market insight generation, financial model modeling, and strategic roadmap tools tailored for entrepreneurs and startups operating across African markets. The platform relies on modern generative AI technologies to assist founders in clarifying their business models.`,
+      content: `Anza provides AI-assisted business planning, founder interviewing, market insight generation, financial model modeling, and strategic roadmap tools tailored for entrepreneurs and startups operating across African markets. The platform relies on modern generative AI technologies to assist founders in clarifying their business models.`,
     },
     {
       id: "ai-disclaimer",
       icon: AlertCircle,
       title: "3. AI Output & Guidance Disclaimer",
       content: `Our AI co-founder features generate automated business documents, market evaluations, and recommendations based on user inputs and external dataset training. While we strive for high accuracy and relevance to African business realities:
-      • Content produced by Startup Copilot Africa is for informational and educational purposes only and does not constitute formal legal, tax, financial, or regulatory advice.
+      • Content produced by Anza is for informational and educational purposes only and does not constitute formal legal, tax, financial, or regulatory advice.
       • Users are responsible for independently verifying financial projections, legal compliance, and market data before making binding commitments or investment decisions.`,
     },
     {
       id: "intellectual-property",
       icon: ShieldCheck,
       title: "4. Intellectual Property & Idea Ownership",
-      content: `• Your Ideas & Startup Content: You retain full, uncompromised ownership of all business ideas, prompts, proprietary data, documents, and business plans you submit to or generate with Startup Copilot Africa.
-      • Platform Assets: All platform source code, user interface designs, branding, logos, graphics, and proprietary algorithms remain the exclusive property of Startup Copilot Africa.`,
+      content: `• Your Ideas & Startup Content: You retain full, uncompromised ownership of all business ideas, prompts, proprietary data, documents, and business plans you submit to or generate with Anza.
+      • Platform Assets: All platform source code, user interface designs, branding, logos, graphics, and proprietary algorithms remain the exclusive property of Anza.`,
     },
     {
       id: "acceptable-use",
@@ -62,7 +62,7 @@ export default function TermsPage() {
       id: "liability",
       icon: Scale,
       title: "6. Limitation of Liability",
-      content: `To the maximum extent permitted by law, Startup Copilot Africa shall not be liable for any indirect, incidental, consequential, special, or punitive damages, or loss of profits, revenue, data, or business opportunities arising out of your access to or use of (or inability to use) the Platform.`,
+      content: `To the maximum extent permitted by law, Anza shall not be liable for any indirect, incidental, consequential, special, or punitive damages, or loss of profits, revenue, data, or business opportunities arising out of your access to or use of (or inability to use) the Platform.`,
     },
     {
       id: "modifications",
@@ -82,18 +82,17 @@ export default function TermsPage() {
           <Link
             href="/"
             className="flex items-center gap-2 font-semibold tracking-tight transition-transform hover:scale-[1.01]"
-            aria-label="Startup Copilot Africa home"
+            aria-label="Anza home"
           >
             <Image
               src="/logo.png"
-              alt="Startup Copilot Africa"
+              alt="Anza"
               width={40}
               height={40}
               className="size-10 rounded-xl object-contain"
             />
             <span className="text-lg">
-              Startup Copilot{" "}
-              <span className="text-green-300 font-bold">Africa</span>
+              <span className="text-green-300 font-bold">A</span>nza
             </span>
           </Link>
 
@@ -120,8 +119,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p className="mt-3 text-base text-green-100/80">
-            Please read these terms carefully before using Startup Copilot
-            Africa.
+            Please read these terms carefully before using Anza.
           </p>
           <p className="mt-2 text-xs text-green-200/60 font-medium">
             Last Updated: {lastUpdated}
@@ -156,7 +154,7 @@ export default function TermsPage() {
         {/* Footer Link */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-green-100 pt-8 text-xs text-zinc-500 dark:border-green-900/40 dark:text-zinc-400">
           <p>
-            © {new Date().getFullYear()} Startup Copilot Africa. All rights
+            © {new Date().getFullYear()} Anza. All rights
             reserved.
           </p>
           <div className="flex items-center gap-4 font-semibold text-green-800 dark:text-green-400">

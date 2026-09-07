@@ -59,7 +59,7 @@ export function StartupWizard() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-5 sm:p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-10 transition-all duration-500 hover:shadow-2xl font-sans">
+    <div className="mx-auto max-w-2xl rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-5 sm:p-8 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-500 hover:shadow-2xl font-sans">
       <div className="flex items-center gap-3">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-green-100 text-green-700 dark:bg-green-950/50 shadow-sm shrink-0">
           <Sparkles className="size-6 text-green-700 dark:text-green-400" />
