@@ -1,6 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Lock, Database, Cpu, Eye, ShieldCheck, Mail } from "lucide-react"
+import { ArrowLeft, Lock, Database, Cpu, Eye, ShieldCheck, Mail, Key } from "lucide-react"
 import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
 
 export const metadata = {
@@ -9,55 +9,66 @@ export const metadata = {
 }
 
 export default function PrivacyPage() {
-  const lastUpdated = "July 24, 2026"
+  const lastUpdated = "September 7, 2026"
 
   const sections = [
     {
       id: "collection",
       icon: Eye,
       title: "1. Information We Collect",
-      content: `We collect information to provide better AI business planning and founder intelligence tools to entrepreneurs across Africa:
-      • Account Data: When you sign up or sign in (via email or Google OAuth), we collect basic profile information such as your name, email address, and profile picture.
-      • Startup & Workspace Inputs: Information you provide during AI interviews, pitch generation, strategic roadmaps, or prompt responses.
-      • Usage & Technical Analytics: Browser details, device information, IP address, and platform interaction telemetry to optimize app performance.`,
+      content: `We collect minimal personal and technical information to deliver our AI business copilot and founder tools:
+      • Account & Identity Data: When you sign up or sign in using email or Google OAuth, we collect your full name, email address, and profile picture avatar.
+      • Startup & Workspace Inputs: Data you input into AI business interviews, pitch decks, market research briefs, financial budget estimations, and strategic prompt responses.
+      • Technical Telemetry: IP address, browser metadata, session cookies, and interaction diagnostics to ensure platform security and optimal performance.`,
+    },
+    {
+      id: "google-oauth",
+      icon: Key,
+      title: "2. Google User Data Policy & Usage",
+      content: `When you authenticate using Google Sign-In:
+      • Data Received: We access only your basic Google public profile information (name, email address, and profile avatar URL).
+      • Purpose of Use: We use this data exclusively to authenticate your identity, establish your secure workspace session, and personalize your founder dashboard.
+      • No Data Sales or Misuse: We do not sell, rent, or transfer your Google user data to third parties. We do not use your Google user data for advertising or marketing profiling.
+      • LLM Privacy Guarantee: Data retrieved from your Google account is never used to train global AI/LLM models.`,
     },
     {
       id: "ai-processing",
       icon: Cpu,
-      title: "2. AI Processing & Founder Confidentiality",
+      title: "3. AI Processing & Founder Confidentiality",
       content: `Your business ideas, financials, and strategies represent your competitive edge.
       • We do NOT sell your startup data or business plans to third parties.
-      • Inputs submitted to our AI co-founder features are processed securely using privacy-focused API endpoints (such as OpenAI and Google Gemini APIs) under strict non-training policies.
-      • Data generated in your workspace is accessible only by your authenticated account.`,
+      • Inputs submitted to our AI co-founder features are processed securely using enterprise API endpoints (OpenAI API) under strict non-training, zero-data-retention privacy policies.
+      • Data generated in your workspace is isolated and accessible only by your authenticated account.`,
     },
     {
       id: "data-storage",
       icon: Database,
-      title: "3. Data Storage & Infrastructure Security",
-      content: `• Authentication & Storage: Account credentials, sessions, and database entries are stored securely in Supabase with Row Level Security (RLS) policies enforcing database isolation per user.
-      • Encryption: All data in transit is encrypted using industry-standard TLS/SSL protocols, and data at rest is encrypted using AES-256 encryption.`,
+      title: "4. Data Storage & Security",
+      content: `• Database Security: Account credentials, sessions, and database entries are stored securely in PostgreSQL (Supabase) enforced with strict Row Level Security (RLS) policies.
+      • Encryption: All data in transit is encrypted using industry-standard TLS 1.3/SSL protocols, and stored data is protected with AES-256 encryption at rest.`,
     },
     {
       id: "cookies",
       icon: Lock,
-      title: "4. Cookies & Session Management",
-      content: `We use essential cookies and secure HTTP-only cookies managed by Supabase SSR to authenticate your user session and keep you signed in securely across browser navigation. We do not use intrusive cross-site tracking cookies.`,
+      title: "5. Cookies & Session Management",
+      content: `We use essential HTTP-only cookies managed by Supabase SSR to authenticate your user session and maintain your signed-in status across pages. We do not use intrusive cross-site tracking cookies.`,
     },
     {
       id: "rights",
       icon: ShieldCheck,
-      title: "5. Your Data Rights",
-      content: `As a founder on Anza, you have full control over your personal data:
-      • Access & Export: You can access and export your generated business plans and strategy briefs at any time.
-      • Account Deletion: You may request complete deletion of your account, database records, and workspace contents by contacting privacy@startupcopilot.africa.`,
+      title: "6. Your Rights & Account Deletion",
+      content: `As a founder on Anza, you retain full control over your data:
+      • Data Access & Export: You may access and export your generated business plans and strategy documents at any time.
+      • Complete Deletion: You can request the total deletion of your user profile, Google authentication links, and all associated startup workspace data by emailing privacy@startupcopilot.africa.`,
     },
     {
       id: "contact",
       icon: Mail,
-      title: "6. Contact Privacy Team",
-      content: `If you have any questions, concerns, or requests regarding this Privacy Policy or how your startup information is handled, please reach out to us at:
+      title: "7. Contact Us",
+      content: `If you have any questions regarding this Privacy Policy or Google User Data usage, please reach out to our privacy compliance team:
       
-      Email: privacy@startupcopilot.africa`,
+      Email: privacy@startupcopilot.africa
+      Domain: https://startup-copilot-africa.vercel.app`,
     },
   ]
 
@@ -74,7 +85,7 @@ export default function PrivacyPage() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link href="/" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-green-100 backdrop-blur-sm transition-all hover:bg-white/20">
-              <ArrowLeft className="size-3.5 " /><span className="max-sm:hidden">
+              <ArrowLeft className="size-3.5" /><span className="max-sm:hidden">
                 Back to Home
                 </span> 
             </Link>
@@ -90,7 +101,7 @@ export default function PrivacyPage() {
           </div>
           <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl">Privacy Policy</h1>
           <p className="mt-3 text-base text-green-100/80">
-            Learn how we protect your founder data, startup ideas, and account privacy.
+            Learn how we protect your founder data, startup ideas, and Google OAuth account privacy.
           </p>
           <p className="mt-2 text-xs text-green-200/60 font-medium">
             Last Updated: {lastUpdated}
