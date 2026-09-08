@@ -73,9 +73,36 @@ export async function generatePitchDeck(projectId: string): Promise<{ success: t
   let response: string
   try {
     response = await generateTextWithFallback(
-      `Create an investor pitch deck for this startup. Use only these facts and never invent statistics, customers, revenue, partnerships, or market sizes. Label unknowns as Validation required.\nStartup: ${context.startup}\nIdea: ${context.title}\nDescription: ${context.description || "Not specified"}\nAudience: ${context.audience || "Not specified"}\nLocation: ${context.location}\n\nReturn exactly six concise slide bodies, 90-150 words each, in this format:\n=== problem ===\n...\n=== solution ===\n...\n=== market ===\n...\n=== business-model ===\n...\n=== traction ===\n...\n=== ask ===\n...`,
-      [{ role: "user", content: "Generate the pitch deck now." }],
-      { maxTokens: 1600, temperature: 0.35 },
+      `You are a world-class startup pitch coach and investor communications specialist. Write a compelling, investor-grade pitch deck for the startup below. Be specific, concrete, and professional. Every claim must be grounded in the provided facts. Never invent statistics, revenue figures, market sizes, or competitor names. Label unknowns explicitly as "(Validation required)" and assumptions as "(Assumption)".
+
+Startup: ${context.startup}
+Business idea: ${context.title}
+Description: ${context.description || "Not yet specified"}
+Target audience: ${context.audience || "Not yet specified"}
+Market: ${context.location}
+Currency: ${context.currency}
+
+Return exactly six slide bodies in the format below — no text outside the sections, no markdown code blocks. Each slide must be 120–180 words of substantive, investor-ready content. Use short paragraphs and bullet points.
+
+=== problem ===
+Open with a sharp, specific statement of the customer problem. Describe who suffers it, how often, what they currently do instead, and the real cost (time, money, or risk) of the status quo. Make the reader feel the urgency. End with: "This is the problem ${context.startup} was built to solve."
+
+=== solution ===
+Describe the solution in one clear sentence, then explain how it works, why it is better than existing alternatives, and what makes it defensible in the ${context.location} context. Highlight local relevance, reliability, and simplicity. Avoid technical jargon. End with the core value promise: what the customer can now do that they could not before.
+
+=== market ===
+Define the beachhead market precisely (who, where, how many). Explain the expansion path from the initial segment. Use reachable customer count × realistic spend per year as the market sizing method — label the figures as "(Assumption — to be validated with sales data)". Describe the competitive landscape and how ${context.startup} differentiates.
+
+=== business-model ===
+State the pricing model clearly in ${context.currency}. Explain how revenue is generated per customer, the target gross margin, and the key unit economics metrics to track (CAC, LTV, payback period). Note which figures are validated vs. assumed. Explain why this model fits the ${context.location} market context.
+
+=== traction ===
+List real milestones achieved so far (interviews, pilots, letters of intent, paying customers, partnerships). If none yet, describe the validation plan: specific targets for customer interviews, trials, and first revenue within the next 90 days. Use a table or bullet format: Milestone | Status | Target Date.
+
+=== ask ===
+State the funding amount sought in ${context.currency}. Break down the use of funds in a simple allocation table (e.g. Customer Acquisition 30%, Product 40%, Operations 20%, Reserve 10%). State the runway this provides and the key milestones that will be reached before the next raise. Include the type of capital sought (equity, grant, convertible note) and what the ideal investor brings beyond money.`,
+      [{ role: "user", content: "Generate the professional investor pitch deck now." }],
+      { maxTokens: 2500, temperature: 0.3 },
     )
   } catch {
     return { success: false, error: "The AI could not generate a deck. Check your AI provider configuration and try again." }

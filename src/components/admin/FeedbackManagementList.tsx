@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { AdminFeedbackItem } from "@/src/app/actions/admin"
-import { MessageSquare, Star, Filter, Search, CheckCircle2, Clock, Globe } from "lucide-react"
+import { MessageSquare, Star, Filter, Search, Globe, Download } from "lucide-react"
 
 export function FeedbackManagementList({ initialFeedback }: { initialFeedback: AdminFeedbackItem[] }) {
   const [items, setItems] = useState<AdminFeedbackItem[]>(initialFeedback)
@@ -28,34 +28,78 @@ export function FeedbackManagementList({ initialFeedback }: { initialFeedback: A
     }
   }
 
+  function handleExportCSV() {
+    const headers = ["ID", "User Name", "User Email", "Category", "Status", "Rating", "Message", "Page URL", "Date"]
+    const rows = filtered.map((f) => [
+      f.id,
+      `"${f.userName}"`,
+      f.userEmail,
+      f.category,
+      f.status,
+      f.rating || "",
+      `"${f.message.replace(/"/g, '""')}"`,
+      f.pageUrl || "",
+      new Date(f.createdAt).toISOString()
+    ])
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `anza_feedback_export_${new Date().toISOString().slice(0,10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="space-y-6">
-      {/* Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search feedback by content, user, or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
-          />
+      {/* Header & Controls Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+            <MessageSquare className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Feedback Inbox</h2>
+            <p className="text-xs text-zinc-500">{filtered.length} entries found</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-zinc-400" />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-green-600"
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search feedback..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-zinc-400 hidden sm:block" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+            >
+              <option value="all">All Categories</option>
+              <option value="bug">Bugs</option>
+              <option value="feature">Features</option>
+              <option value="improvement">Improvements</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
-            <option value="all">All Categories</option>
-            <option value="bug">Bugs</option>
-            <option value="feature">Features</option>
-            <option value="improvement">Improvements</option>
-            <option value="other">Other</option>
-          </select>
+            <Download className="w-4 h-4" /> Export
+          </button>
         </div>
       </div>
 
@@ -66,7 +110,7 @@ export function FeedbackManagementList({ initialFeedback }: { initialFeedback: A
           <p className="text-sm font-medium">No feedback items match your criteria.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid max-h-[min(60dvh,42rem)] grid-cols-1 gap-4 overflow-y-auto pr-1 md:grid-cols-2">
           {filtered.map((item) => (
             <div
               key={item.id}
@@ -116,7 +160,7 @@ export function FeedbackManagementList({ initialFeedback }: { initialFeedback: A
 
                 {/* Message */}
                 <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed font-normal whitespace-pre-wrap">
-                  "{item.message}"
+                  &quot;{item.message}&quot;
                 </p>
 
                 {item.pageUrl && (

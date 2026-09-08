@@ -91,50 +91,55 @@ export async function generateLegalComplianceWorkspace(projectId: string): Promi
     return { success: false, error: AI_RATE_LIMIT_MESSAGE }
   }
 
-  const systemPrompt = `You are a Senior Corporate Lawyer and Regulatory Compliance Specialist specializing in African business incorporation and licensing.
-Analyze the legal, licensing, tax, and regulatory compliance requirements for this startup in ${countryName}.
-Return ONLY valid JSON matching this exact structure:
+  const systemPrompt = `You are a Senior Corporate Lawyer and Regulatory Compliance Specialist with deep expertise in African business law, startup incorporation, licensing, and tax compliance. Your advice must be practical, country-specific, and actionable for a first-time founder.
+
+Analyze the legal, licensing, tax, and data privacy compliance requirements for this startup in ${countryName}. Be precise and specific to the country and industry. Never fabricate laws, agencies, or fees — use realistic estimates and label uncertain figures as "(Estimate — verify locally)".
+
+Return ONLY valid JSON matching this exact structure with no extra text or markdown outside the JSON:
 {
-  "recommendedEntityType": "e.g. Private Limited Company (Ltd / PLC / SARL / LTD)",
-  "entityDescription": "Detailed explanation of why this entity type is ideal for this sector and country.",
+  "recommendedEntityType": "Full legal name e.g. Private Limited Company (Ltd) / Société à Responsabilité Limitée (SARL) / Close Corporation (CC)",
+  "entityDescription": "3–4 sentence explanation of why this entity type is optimal for this specific industry, country context, and growth stage. Include liability protection, tax treatment, investor-readiness, and operational flexibility.",
   "requiredLicenses": [
     {
-      "name": "e.g. BRS Business Registration / CAC License / CBK Payment Service Provider",
-      "authority": "e.g. Business Registration Service / Corporate Affairs Commission",
+      "name": "Specific permit or license name",
+      "authority": "Exact government body or regulator name",
       "mandatory": true,
-      "description": "Why this permit is required.",
-      "estimatedCost": "Estimated fee or KES/NGN/USD range"
+      "description": "Why this is required for this specific business type and country. Include the legal basis (act or regulation name) if known.",
+      "estimatedCost": "Specific fee range in local currency or USD, e.g. KES 10,000–50,000 / NGN 50,000–200,000 (Estimate)"
     }
   ],
   "taxObligations": [
     {
-      "name": "e.g. KRA PIN & VAT Registration / FIRS Tax ID",
-      "agency": "e.g. Kenya Revenue Authority / FIRS / SARS",
-      "frequency": "Monthly / Annual",
-      "details": "Filing deadlines and key tax obligations."
+      "name": "Tax type and registration requirement",
+      "agency": "Exact revenue authority name",
+      "frequency": "Monthly / Quarterly / Annual",
+      "details": "Key filing deadlines, applicable rates, thresholds, and penalties for non-compliance."
     }
   ],
   "dataPrivacyRequirements": {
-    "actName": "e.g. Kenya Data Protection Act 2019 / Nigeria Data Protection Regulation (NDPR) / POPIA",
-    "commissioner": "e.g. ODPC / NDPC / Information Regulator",
+    "actName": "Full name of applicable data protection law",
+    "commissioner": "Name of the supervisory authority or data commissioner",
     "keyObligations": [
-      "Register as Data Controller/Processor",
-      "Draft explicit Privacy Policy & Consent notices"
+      "Register as Data Controller/Processor with [authority] before collecting customer data",
+      "Draft and publish a compliant Privacy Policy accessible to all users",
+      "Obtain explicit informed consent before processing personal data",
+      "Implement data retention and deletion policies",
+      "Report data breaches to [authority] within [X] hours/days"
     ]
   },
   "setupChecklist": [
     {
       "step": 1,
-      "title": "Name Search & Reservation",
-      "authority": "Relevant Registrar",
-      "timeline": "1-3 days",
-      "description": "Detailed step instructions."
+      "title": "Step title",
+      "authority": "Responsible government body",
+      "timeline": "Realistic timeline e.g. 1–3 business days",
+      "description": "Specific, actionable instructions for this step including what documents to prepare, where to go or apply online, and what to expect."
     }
   ],
   "recommendations": [
     {
-      "title": "...",
-      "detail": "..."
+      "title": "Recommendation title",
+      "detail": "2–3 sentence practical recommendation specific to this industry, country, and growth stage."
     }
   ]
 }
@@ -145,12 +150,14 @@ Country: ${countryName} (${startup.country_code})
 City: ${startup.city || "Major City"}
 Industry: ${startup.industry || "General Business"}
 Project Title: ${project.title}
-Description: ${project.description || startup.description || "N/A"}`
+Description: ${project.description || startup.description || "N/A"}
+
+Produce a minimum of 4 required licenses (mandatory + recommended), 3 tax obligations, 5 data privacy obligations, 6 setup checklist steps, and 4 strategic recommendations.`
 
   let aiWorkspace: Partial<LegalWorkspace> = {}
   try {
     const { generateTextWithFallback } = await import("@/src/lib/ai-providers")
-    const response = await generateTextWithFallback(systemPrompt, [], { maxTokens: 2000, temperature: 0.5 })
+    const response = await generateTextWithFallback(systemPrompt, [], { maxTokens: 3500, temperature: 0.3 })
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       aiWorkspace = JSON.parse(jsonMatch[0])

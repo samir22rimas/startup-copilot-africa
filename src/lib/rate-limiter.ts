@@ -56,7 +56,12 @@ export async function checkRateLimit(
 
   const { error: insertError } = await supabaseAdmin
     .from("usage_events")
-    .insert({ user_id: userId, startup_id: null, event_name: eventName, quantity: 1 });
+    .insert({
+      user_id: userId,
+      startup_id: null,
+      event_name: eventName,
+      quantity: 1,
+    });
   if (insertError) {
     console.error("[rate-limit] insert failed:", insertError.message);
   }

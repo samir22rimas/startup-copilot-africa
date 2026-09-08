@@ -1,32 +1,32 @@
 export interface JourneyStep {
-  id: string
-  day: number
-  title: string
-  description: string
-  href: string
+  id: string;
+  day: number;
+  title: string;
+  description: string;
+  href: string;
   /** Auto-detected from project/startup state */
-  done: boolean
+  done: boolean;
 }
 
 export interface LaunchJourney {
-  steps: JourneyStep[]
-  completedCount: number
-  totalCount: number
-  percent: number
+  steps: JourneyStep[];
+  completedCount: number;
+  totalCount: number;
+  percent: number;
 }
 
 export function buildLaunchJourney(input: {
-  onboardingCompleted: boolean
-  documentCount: number
-  hasResults: boolean
-  hasTrackedMetrics: boolean
-  hasMarketingEvent: boolean
-  hasWeeklyCheckIn: boolean
-  hasPitchDeck: boolean
-  hasFundingWorkspace: boolean
-  hasLegalWorkspace: boolean
-  milestoneProgress: number
-  tasksCount: number
+  onboardingCompleted: boolean;
+  documentCount: number;
+  hasResults: boolean;
+  hasTrackedMetrics: boolean;
+  hasMarketingEvent: boolean;
+  hasWeeklyCheckIn: boolean;
+  hasPitchDeck: boolean;
+  hasFundingWorkspace: boolean;
+  hasLegalWorkspace: boolean;
+  milestoneProgress: number;
+  tasksCount: number;
 }): LaunchJourney {
   const steps: JourneyStep[] = [
     {
@@ -109,15 +109,16 @@ export function buildLaunchJourney(input: {
       href: "/dashboard/funding",
       done: input.hasFundingWorkspace,
     },
-  ]
+  ];
 
-  const completedCount = steps.filter((s) => s.done).length
-  const totalCount = steps.length
-  const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const completedCount = steps.filter((s) => s.done).length;
+  const totalCount = steps.length;
+  const percent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  return { steps, completedCount, totalCount, percent }
+  return { steps, completedCount, totalCount, percent };
 }
 
 export function nextJourneyStep(journey: LaunchJourney): JourneyStep | null {
-  return journey.steps.find((s) => !s.done) ?? null
+  return journey.steps.find((s) => !s.done) ?? null;
 }

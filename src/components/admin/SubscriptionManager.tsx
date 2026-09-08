@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { AdminSubscriptionItem, UserPlanTier, updateUserPlanTierAction } from "@/src/app/actions/admin"
-import { CreditCard, DollarSign, Users, Check, Filter, Search, ArrowUpRight } from "lucide-react"
+import { AdminSubscriptionItem, UserPlanTier } from "@/src/app/actions/admin"
+import { Filter, Search } from "lucide-react"
 
 export function SubscriptionManager({
   initialSubscriptions,
@@ -15,8 +15,8 @@ export function SubscriptionManager({
     tierCounts: Record<UserPlanTier, number>
   }
 }) {
-  const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>(initialSubscriptions)
-  const [stats, setStats] = useState(initialStats)
+  const [subscriptions] = useState<AdminSubscriptionItem[]>(initialSubscriptions)
+  const [stats] = useState(initialStats)
   const [search, setSearch] = useState("")
   const [tierFilter, setTierFilter] = useState("all")
 
@@ -112,9 +112,9 @@ export function SubscriptionManager({
 
       {/* Subscription Table */}
       <div className="rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="max-h-[min(55dvh,36rem)] overflow-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold uppercase tracking-wider">
                 <th className="py-3.5 px-4">Subscriber</th>
                 <th className="py-3.5 px-4">Plan Tier</th>

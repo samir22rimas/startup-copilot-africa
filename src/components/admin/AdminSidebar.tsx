@@ -27,7 +27,7 @@ export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-full md:w-64 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-900 text-white flex flex-col shrink-0 min-h-screen">
+    <aside className="flex h-auto max-h-[42dvh] w-full shrink-0 flex-col border-r border-zinc-200 bg-zinc-900 text-white dark:border-zinc-800 md:h-full md:max-h-none md:w-64">
       {/* Brand Header */}
       <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -45,7 +45,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Nav List */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
         <div className="px-3 py-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
           Management
         </div>
