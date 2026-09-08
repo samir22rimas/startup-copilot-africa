@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { AdminStartupListItem } from "@/src/app/actions/admin"
 import { Search, Filter, Building2, Download, Building } from "lucide-react"
+import { getIndustryLabel } from "@/src/lib/industries"
 
 export function StartupManagementTable({ initialStartups }: { initialStartups: AdminStartupListItem[] }) {
   const [startups] = useState<AdminStartupListItem[]>(initialStartups)
@@ -153,7 +154,7 @@ export function StartupManagementTable({ initialStartups }: { initialStartups: A
                           {startup.stage.replace("_", " ")}
                         </span>
                         <span className="text-[11px] text-zinc-500 font-medium bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                          {startup.industry || "General"}
+                          {getIndustryLabel(startup.industry)}
                         </span>
                       </div>
                     </td>

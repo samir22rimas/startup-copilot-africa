@@ -9,6 +9,7 @@ import {
   formatAfricanCountryOption,
   getAfricanCountryCurrency,
 } from "@/src/lib/african-countries"
+import { INDUSTRIES, INDUSTRY_GROUPS } from "@/src/lib/industries"
 import { useRouter } from "next/navigation"
 
 const STAGES: { value: StartupStage; label: string }[] = [
@@ -260,7 +261,22 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
 
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
             <TextField label="Startup Name" value={startupName} onChange={setStartupName} placeholder="Your company" />
-            <TextField label="Industry / Sector" value={industry} onChange={setIndustry} placeholder="e.g. Fintech" />
+            <Field label="Industry / Business Type">
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="">Select Industry / Business Type</option>
+                {INDUSTRY_GROUPS.map((group) => (
+                  <optgroup key={group} label={group}>
+                    {INDUSTRIES.filter((i) => i.group === group).map((i) => (
+                      <option key={i.value} value={i.value}>{i.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </Field>
             <TextField label="City" value={startupCity} onChange={setStartupCity} placeholder="e.g. Lagos" />
             <Field label="Country">
               <select

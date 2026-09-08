@@ -10,6 +10,7 @@ import {
   formatAfricanCountryOption,
   getAfricanCountryCurrency,
 } from "@/src/lib/african-countries"
+import { INDUSTRIES, INDUSTRY_GROUPS } from "@/src/lib/industries"
 import type { OnboardingInput } from "@/src/features/business/actions"
 
 interface Step1CompanyProps {
@@ -88,11 +89,14 @@ export function Step1Company({ data, onChange, onNext }: Step1CompanyProps) {
             value={data.industry}
             onChange={(e) => onChange("industry", e.target.value)}
           >
-            <option value="" disabled hidden>Select Industry</option>
-            <option value="fintech">Fintech</option>
-            <option value="healthtech">Healthtech</option>
-            <option value="agritech">Agritech</option>
-            <option value="edtech">Edtech</option>
+            <option value="" disabled hidden>Select Industry / Business Type</option>
+            {INDUSTRY_GROUPS.map((group) => (
+              <optgroup key={group} label={group}>
+                {INDUSTRIES.filter((i) => i.group === group).map((i) => (
+                  <option key={i.value} value={i.value}>{i.label}</option>
+                ))}
+              </optgroup>
+            ))}
           </Select>
         </div>
 
