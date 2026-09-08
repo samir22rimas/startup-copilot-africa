@@ -1,23 +1,30 @@
-import OpenAI from "openai"
+import { GoogleGenAI } from "@google/genai"
 
 /**
- * Shared AI client.
- *
- * The app is now configured to use DeepSeek through the OpenAI-compatible
- * API surface that the existing code already uses.
+ * Shared Gemini AI client using the official @google/genai SDK.
+ * Primary model: gemini-3.8-flash
  */
-const apiKey = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
 if (!apiKey) {
   throw new Error(
-    "Missing DEEPSEEK_API_KEY or OPENAI_API_KEY. Add it to .env.local before running the app.",
+    "Missing GEMINI_API_KEY in .env.local. Add your Google AI API key before running the app."
   )
 }
 
-export const openai = new OpenAI({
-  apiKey,
-  baseURL: process.env.AI_BASE_URL || "https://api.deepseek.com/v1",
-})
+export const geminiClient = new GoogleGenAI({ apiKey })
 
-/** Default chat model used across the app. Override per-call as needed. */
-export const DEFAULT_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat"
+/** Default Gemini model used across the app. */
+export const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash"
+
+// Keep openai export for any legacy code that still imports it
+import OpenAI from "openai"
+const groqKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY
+export const openai = groqKey
+  ? new OpenAI({
+      apiKey: groqKey,
+      baseURL: process.env.GROQ_API_KEY
+        ? process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1"
+        : "https://api.openai.com/v1",
+    })
+  : null

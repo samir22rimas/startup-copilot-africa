@@ -12,6 +12,7 @@ import { getProjects } from "@/src/features/business/services/project.service"
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
 import { readActiveProjectCookie, resolveActiveProject } from "@/src/lib/active-project"
 import { FeedbackModal } from "@/src/components/shared/FeedbackModal"
+import { isUserAdminEmail } from "@/src/lib/admin-guard"
 
 async function DashboardTopNav() {
   const supabase = await createSupabaseServerClient()
@@ -52,6 +53,7 @@ async function DashboardSidebar() {
   return (
     <Sidebar
       activeProjectId={activeProjectId}
+      isAdmin={isUserAdminEmail(user.email)}
       projects={projects.map((project) => ({
         id: project.id,
         title: project.title,

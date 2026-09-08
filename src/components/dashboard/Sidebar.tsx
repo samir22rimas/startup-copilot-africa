@@ -14,6 +14,7 @@ import {
   Plus,
   Scale,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -34,9 +35,11 @@ const navItems = [
 export function Sidebar({
   projects,
   activeProjectId,
+  isAdmin = false,
 }: {
   projects: Array<{ id: string; title: string }>
   activeProjectId?: string | null
+  isAdmin?: boolean
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -233,6 +236,15 @@ export function Sidebar({
         >
           <HelpCircle className="h-4 w-4" /> Help &amp; Support
         </Link>
+
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="mt-2 flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 transition-colors hover:bg-green-100 dark:hover:bg-green-900/60"
+          >
+            <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> Admin Portal
+          </Link>
+        )}
       </div>
     </aside>
   );
