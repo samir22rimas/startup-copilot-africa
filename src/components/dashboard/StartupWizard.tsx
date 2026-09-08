@@ -7,6 +7,7 @@ import {
   formatAfricanCountryOption,
   getAfricanCountryCurrency,
 } from "@/src/lib/african-countries";
+import { INDUSTRIES, INDUSTRY_GROUPS } from "@/src/lib/industries";
 import * as React from "react";
 
 export function StartupWizard() {
@@ -18,7 +19,7 @@ export function StartupWizard() {
   const [projectDescription, setProjectDescription] = React.useState("");
   const [countryCode, setCountryCode] = React.useState("KE");
   const [city, setCity] = React.useState("");
-  const [industry, setIndustry] = React.useState("Agriculture");
+  const [industry, setIndustry] = React.useState("");
   const [budgetAmount, setBudgetAmount] = React.useState("1000");
 
   const currency = getAfricanCountryCurrency(countryCode);
@@ -181,7 +182,7 @@ export function StartupWizard() {
               htmlFor="industry"
               className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500"
             >
-              Industry / Sector
+              Industry / Business Type
             </label>
             <select
               id="industry"
@@ -189,13 +190,14 @@ export function StartupWizard() {
               onChange={(e) => setIndustry(e.target.value)}
               className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 dark:border-zinc-700 dark:bg-zinc-950"
             >
-              <option value="Agriculture">Agriculture / Agrotech</option>
-              <option value="Fintech">Financial Services / Fintech</option>
-              <option value="Healthtech">Healthcare / Healthtech</option>
-              <option value="Logistics">Logistics & Supply Chain</option>
-              <option value="E-Commerce">E-Commerce & Retail</option>
-              <option value="Edtech">Education / Edtech</option>
-              <option value="Clean Energy">Clean Energy / Solar</option>
+              <option value="" disabled hidden>Select industry / business type</option>
+              {INDUSTRY_GROUPS.map((group) => (
+                <optgroup key={group} label={group}>
+                  {INDUSTRIES.filter((i) => i.group === group).map((i) => (
+                    <option key={i.value} value={i.value}>{i.label}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
         </div>
