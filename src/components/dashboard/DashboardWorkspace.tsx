@@ -62,6 +62,7 @@ export function DashboardWorkspace({
   const [copilotLoading, setCopilotLoading] = React.useState(false)
 
   const chatListRef = React.useRef<HTMLDivElement>(null)
+  const chatInputRef = React.useRef<HTMLTextAreaElement>(null)
   const userScrolledUp = React.useRef(false)
 
   const completed = tasks.filter((t) => t.done).length
@@ -118,6 +119,11 @@ export function DashboardWorkspace({
     userScrolledUp.current = distanceFromBottom > 60
   }
 
+  function resizeChatInput(input: HTMLTextAreaElement) {
+    input.style.height = "auto"
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`
+  }
+
   async function handleToggle(taskId: string, currentStatus: boolean) {
     setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, done: !currentStatus } : t)))
     await toggleDashboardTask(project.id, taskId, !currentStatus)
@@ -152,6 +158,7 @@ export function DashboardWorkspace({
     userScrolledUp.current = false
     setCopilotMessages((prev) => [...prev, userMsg])
     setQuestion("")
+    if (chatInputRef.current) chatInputRef.current.style.height = "auto"
     setCopilotLoading(true)
 
     try {
@@ -561,13 +568,23 @@ export function DashboardWorkspace({
           )}
         </div>
 
-        <form onSubmit={handleAskCopilot} className="flex gap-2 sm:gap-3">
-          <input
-            type="text"
+        <form onSubmit={handleAskCopilot} className="items-end flex gap-2 sm:gap-3">
+          <textarea
+            ref={chatInputRef}
+            rows={1}
             value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            onChange={(e) => {
+              setQuestion(e.target.value)
+              resizeChatInput(e.currentTarget)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                e.currentTarget.form?.requestSubmit()
+              }
+            }}
             placeholder="Ask your copilot..."
-            className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 sm:px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
+            className="min-h-11 max-h-40 min-w-0 flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm leading-6 outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
           />
           <button
             type="submit"
