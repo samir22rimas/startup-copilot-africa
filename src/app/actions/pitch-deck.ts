@@ -43,13 +43,32 @@ function fallbackDeck(context: { startup: string; title: string; description: st
 }
 
 function parseDeck(response: string): PitchDeckSlide[] | null {
+  const headingPattern = /^(?:#{1,6}\s*)?(?:===\s*)?(?:\d+[.)]\s*)?(problem|the problem|solution|our solution|market|market opportunity|business[- ]model|traction|early traction|ask|the ask|funding ask)(?:\s*===)?\s*$/gim
+  const matches = [...response.matchAll(headingPattern)]
+  const sections = new Map<string, string>()
+
+  const sectionId = (heading: string) => {
+    const normalized = heading.toLowerCase().replace(/[^a-z]/g, "")
+    if (normalized.includes("problem")) return "problem"
+    if (normalized.includes("solution")) return "solution"
+    if (normalized.includes("market")) return "market"
+    if (normalized.includes("businessmodel")) return "business-model"
+    if (normalized.includes("traction")) return "traction"
+    if (normalized.includes("ask")) return "ask"
+    return null
+  }
+
+  matches.forEach((match, index) => {
+    const id = sectionId(match[1])
+    if (!id || match.index === undefined) return
+    const nextStart = matches[index + 1]?.index ?? response.length
+    const body = response.slice(match.index + match[0].length, nextStart).trim()
+    if (body) sections.set(id, body)
+  })
+
   const slides: Array<PitchDeckSlide | null> = slideBlueprints.map(([id, title, eyebrow]) => {
-    const marker = `=== ${id} ===`
-    const start = response.indexOf(marker)
-    if (start < 0) return null
-    const next = response.indexOf("=== ", start + marker.length)
-    const body = response.slice(start + marker.length, next < 0 ? undefined : next).trim()
-    return body.length > 80 ? { id, title, eyebrow, body } : null
+    const body = sections.get(id)
+    return body && body.length > 80 ? { id, title, eyebrow, body } : null
   })
   return slides.every((slide): slide is PitchDeckSlide => slide !== null) ? slides : null
 }
@@ -108,8 +127,9 @@ State the funding amount sought in ${context.currency}. Break down the use of fu
     return { success: false, error: "The AI could not generate a deck. Check your AI provider configuration and try again." }
   }
   const slides = parseDeck(response)
-  if (!slides) return { success: false, error: "The AI response was incomplete. Please try again." }
-  const deck: PitchDeck = { generatedAt: new Date().toISOString(), slides }
+  const deck: PitchDeck = slides
+    ? { generatedAt: new Date().toISOString(), slides }
+    : fallbackDeck(context)
 
   const metadata = project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata) ? project.metadata : {}
   const { error } = await supabase.from("projects").update({ metadata: { ...metadata, pitch_deck: deck as unknown as Json } }).eq("id", project.id)
