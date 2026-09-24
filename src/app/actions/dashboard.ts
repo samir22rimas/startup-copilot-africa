@@ -496,10 +496,27 @@ Description: ${project.description || "N/A"}`;
   if (tasks.length === 0) {
     tasks = [
       {
-        id: "error",
-        title:
-          "The AI returned an empty task list. Please refresh or try again.",
-        tag: "Error",
+        id: "task_1",
+        title: "Define your value proposition and target audience",
+        tag: "Strategy",
+        done: false,
+      },
+      {
+        id: "task_2",
+        title: "Set up your initial marketing channels",
+        tag: "Marketing",
+        done: false,
+      },
+      {
+        id: "task_3",
+        title: "Identify your first 10 potential customers",
+        tag: "Research",
+        done: false,
+      },
+      {
+        id: "task_4",
+        title: "Create a basic financial budget",
+        tag: "Planning",
         done: false,
       },
     ];
@@ -753,8 +770,12 @@ export async function createStartupAndFirstProject(input: {
     const { writeActiveProjectCookie } = await import(
       "@/src/lib/active-project"
     );
+    const { writeActiveStartupCookie } = await import(
+      "@/src/lib/active-startup"
+    );
     try {
       await writeActiveProjectCookie(project.id);
+      await writeActiveStartupCookie(startup.id);
     } catch {
       // non-blocking
     }

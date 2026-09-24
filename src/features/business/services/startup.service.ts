@@ -12,24 +12,32 @@ function slugify(name: string): string {
     .replace(/(^-|-$)/g, "")
 }
 
-export async function getMyStartup() {
+import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
+
+export async function getAllMyStartups() {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) return []
 
   const { data, error } = await supabase
     .from("startups")
     .select("*")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
 
   if (error) {
-    console.error("[getMyStartup]", error.message)
-    return null
+    console.error("[getAllMyStartups]", error.message)
+    return []
   }
-  return data
+  return data || []
+}
+
+export async function getMyStartup() {
+  const startups = await getAllMyStartups()
+  if (startups.length === 0) return null
+
+  const preferredId = await readActiveStartupCookie()
+  return resolveActiveStartup(startups, preferredId)
 }
 
 /**
@@ -72,7 +80,7 @@ export async function createStartup(input: {
   }
 
   const base = slugify(input.name) || "startup"
-  const slug = `${base}-${user.id.slice(0, 6)}`
+  const slug = `${base}-${crypto.randomUUID().slice(0, 8)}`
 
   const payload: StartupInsert = {
     owner_id: user.id,

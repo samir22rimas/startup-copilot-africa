@@ -23,8 +23,8 @@ export async function generateTextWithFallback(
   // 1. Primary: Gemini 3.8 Flash via @google/genai SDK
   if (getEnv("GEMINI_API_KEY") || getEnv("GOOGLE_GENERATIVE_AI_API_KEY")) {
     const geminiModels = getEnv("GEMINI_MODEL")
-      ? [getEnv("GEMINI_MODEL")!, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"]
-      : ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"]
+      ? [getEnv("GEMINI_MODEL")!, "gemini-3.8-flash"]
+      : ["gemini-3.8-flash"]
 
     for (const model of geminiModels) {
       try {
@@ -147,8 +147,8 @@ async function generateWithGroq(
   if (!apiKey) throw new Error("Groq API key missing")
 
   const groqModels = getEnv("GROQ_MODEL")
-    ? [getEnv("GROQ_MODEL")!, "openai/gpt-oss-20b", "openai/gpt-oss-120b"]
-    : ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b", "groq/compound-mini"]
+    ? [getEnv("GROQ_MODEL")!, "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+    : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
 
   let lastErr = ""
   for (const model of groqModels) {
@@ -171,8 +171,9 @@ async function generateWithGroq(
         continue
       }
       const data = await response.json()
-      const text = data.choices?.[0]?.message?.content || ""
-      if (text.trim()) return text
+      const msg = data.choices?.[0]?.message
+      const text = (msg?.content || msg?.reasoning_content || msg?.reasoning || "").trim()
+      if (text) return text
     } catch (err: any) {
       lastErr = err.message || String(err)
     }

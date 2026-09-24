@@ -35,43 +35,45 @@ const navItems = [
 export function Sidebar({
   projects,
   activeProjectId,
+  startups,
+  activeStartupId,
   isAdmin = false,
 }: {
   projects: Array<{ id: string; title: string }>
   activeProjectId?: string | null
+  startups: Array<{ id: string; name: string }>
+  activeStartupId?: string | null
   isAdmin?: boolean
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const active =
-    projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null;
-  const [activeTitle, setActiveTitle] = React.useState(active?.title ?? "No project selected");
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] =
-    React.useState(false);
-  const [switching, setSwitching] = React.useState(false);
+  const activeStartup = startups.find(s => s.id === activeStartupId) ?? startups[0] ?? null
+  const [activeTitle, setActiveTitle] = React.useState(activeStartup?.name ?? "No business selected")
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = React.useState(false)
+  const [switching, setSwitching] = React.useState(false)
 
   React.useEffect(() => {
-    setActiveTitle(active?.title ?? "No project selected");
-  }, [active?.title]);
+    setActiveTitle(activeStartup?.name ?? "No business selected")
+  }, [activeStartup?.name])
 
-  async function handleSelectProject(project: { id: string; title: string }) {
-    if (project.id === active?.id) {
-      setIsProjectDropdownOpen(false);
-      return;
+  async function handleSelectStartup(startup: { id: string; name: string }) {
+    if (startup.id === activeStartup?.id) {
+      setIsProjectDropdownOpen(false)
+      return
     }
-    setSwitching(true);
-    setActiveTitle(project.title);
-    setIsProjectDropdownOpen(false);
+    setSwitching(true)
+    setActiveTitle(startup.name)
+    setIsProjectDropdownOpen(false)
     try {
-      const { setActiveProject } = await import("@/src/app/actions/project-context");
-      const res = await setActiveProject(project.id);
+      const { setActiveStartup } = await import("@/src/app/actions/startup-context")
+      const res = await setActiveStartup(startup.id)
       if (!res.success) {
-        setActiveTitle(active?.title ?? "No project selected");
-        return;
+        setActiveTitle(activeStartup?.name ?? "No business selected")
+        return
       }
-      router.refresh();
+      router.refresh()
     } finally {
-      setSwitching(false);
+      setSwitching(false)
     }
   }
 
@@ -113,16 +115,19 @@ export function Sidebar({
                   onClick={() => setIsProjectDropdownOpen(false)}
                 />
                 <div className="absolute left-0 right-0 top-12 md:top-14 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden py-1">
-                  {projects.map((project) => (
+                  <div className="px-3 py-2 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                    Businesses
+                  </div>
+                  {startups.map((startup) => (
                     <button
-                      key={project.id}
+                      key={startup.id}
                       type="button"
                       disabled={switching}
-                      onClick={() => handleSelectProject(project)}
+                      onClick={() => handleSelectStartup(startup)}
                       className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
                     >
-                      {project.title}
-                      {active?.id === project.id && (
+                      {startup.name}
+                      {activeStartup?.id === startup.id && (
                         <Check className="w-4 h-4 text-green-600" />
                       )}
                     </button>

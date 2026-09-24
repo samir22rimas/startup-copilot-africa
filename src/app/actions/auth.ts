@@ -18,8 +18,14 @@ function getField(formData: FormData, field: string) {
   return typeof formData.get(field) === "string" ? String(formData.get(field)) : ""
 }
 
-function getAuthErrorMessage(error: { message?: string } | null | undefined) {
+function getAuthErrorMessage(error: { message?: string; status?: number; code?: string } | null | undefined) {
   const message = error?.message?.toLowerCase() ?? ""
+  const status = error?.status
+
+  // Supabase 500 / empty response — SDK surfaces this as message "{}" or an empty string
+  if (status === 500 || message === "{}" || message === "") {
+    return "Something went wrong on our end. Please try again in a moment."
+  }
 
   if (message.includes("rate limit") || message.includes("too many requests")) {
     return "Too many email requests were sent recently. Please wait a few minutes before trying again."
@@ -70,7 +76,8 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
 
     if (error) {
       const friendlyError = getAuthErrorMessage(error)
-      return { error: friendlyError ?? error.message }
+      // Always return a string — never expose raw SDK messages like "{}"
+      return { error: friendlyError ?? (typeof error.message === "string" && error.message && error.message !== "{}" ? error.message : "Sign up failed. Please try again.") }
     }
     return { message: "Check your email to confirm your account, then sign in." }
   }

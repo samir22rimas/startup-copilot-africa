@@ -7,7 +7,7 @@ import { DashboardScrollLock } from "@/src/components/dashboard/DashboardScrollL
 import { SidebarSkeleton } from "@/src/components/skeletons/SidebarSkeleton"
 import { TopNavSkeleton } from "@/src/components/skeletons/TopNavSkeleton"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
-import { getMyStartup } from "@/src/features/business/services/startup.service"
+import { getMyStartup, getAllMyStartups } from "@/src/features/business/services/startup.service"
 import { getProjects } from "@/src/features/business/services/project.service"
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
 import { readActiveProjectCookie, resolveActiveProject } from "@/src/lib/active-project"
@@ -45,6 +45,7 @@ async function DashboardSidebar() {
   if (!user) redirect("/sign-in")
 
   const startup = await getMyStartup()
+  const startups = await getAllMyStartups()
   const projects = startup ? await getProjects(startup.id) : []
   const preferredId = await readActiveProjectCookie()
   const activeProjectId =
@@ -53,10 +54,15 @@ async function DashboardSidebar() {
   return (
     <Sidebar
       activeProjectId={activeProjectId}
+      activeStartupId={startup?.id}
       isAdmin={isUserAdminEmail(user.email)}
       projects={projects.map((project) => ({
         id: project.id,
         title: project.title,
+      }))}
+      startups={startups.map((s) => ({
+        id: s.id,
+        name: s.name,
       }))}
     />
   )
