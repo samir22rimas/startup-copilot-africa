@@ -53,7 +53,7 @@ async function uploadFile(file: File, projectId: string) {
   if (!prepared.success) return prepared
   const { error } = await createSupabaseBrowserClient()
     .storage.from(STORAGE_BUCKETS.startupDocuments)
-    .uploadToSignedUrl(prepared.storagePath, prepared.token, file)
+    .upload(prepared.storagePath, file, { contentType: prepared.contentType, upsert: false })
   if (error) return { success: false as const, error: "The upload did not finish. Check your connection and try again." }
   return registerUploadedDocument(projectId, prepared.storagePath, file.name)
 }
@@ -70,7 +70,7 @@ export function DocumentCenter({
   canEdit: boolean
 }) {
   const { t, locale } = useI18n()
-  const d = t.documents
+  const d = (t as unknown as { documents?: Record<string, string> }).documents || {}
   const [documents, setDocuments] = React.useState(initial)
   const [query, setQuery] = React.useState("")
   const [searching, setSearching] = React.useState(false)
