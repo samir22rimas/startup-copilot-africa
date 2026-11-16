@@ -3,15 +3,11 @@
 import type { FundingWorkspace as FundingWorkspaceData, PitchDeckItem } from "@/src/app/actions/funding"
 import { generateFundingWorkspace, saveFundingWorkspace } from "@/src/app/actions/funding"
 import { 
-  CircleDollarSign, 
-  TrendingUp, 
   Lightbulb, 
-  HelpCircle, 
   ExternalLink, 
   RefreshCw, 
   Save, 
   Check, 
-  Info,
   Calendar
 } from "lucide-react"
 import * as React from "react"
@@ -20,7 +16,7 @@ import Link from "next/link"
 
 interface FundingWorkspaceProps {
   projectId: string
-  startup: any
+  startup: { name: string; budget_currency: string | null }
   initialWorkspace: FundingWorkspaceData | null
 }
 
@@ -44,7 +40,9 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
     if (!initialWorkspace) {
       handleGenerate()
     }
-  }, []) // run once on mount if initialWorkspace is missing
+    // Run once on mount when nothing is saved yet; handleGenerate is recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleGenerate() {
     setIsGenerating(true)
@@ -120,7 +118,7 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
             Capital & Runway Control
           </h1>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Model cash runway, draft investor pitch checklists, and track opportunities matching African ecosystems.
+            Model cash runway and prepare your investor pitch checklist. Figures here are your own planning inputs.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -284,41 +282,22 @@ export function FundingWorkspace({ projectId, startup, initialWorkspace }: Fundi
 
         {/* Opportunities & AI Recommendations */}
         <div className="space-y-6">
-          {/* Opportunities list */}
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 transition-all duration-300 hover:shadow-md">
-            <div className="mb-4">
-              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                <Calendar className="size-4.5 text-green-700" /> Regional Funding Programs
-              </h3>
-              <p className="text-xs text-zinc-500">Accelerators and grant pools designed specifically for African startups.</p>
-            </div>
-            <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
-              {workspace.opportunities.map((opp) => (
-                <div key={opp.name} className="p-3 border border-zinc-100 dark:border-zinc-850 rounded-xl hover:shadow-sm transition-shadow">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{opp.name}</span>
-                    <span className="shrink-0 text-[10px] font-bold bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 px-2 py-0.5 rounded-full">
-                      {opp.type}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-500 mt-2 space-y-1">
-                    <p>Range: <span className="font-medium text-zinc-700 dark:text-zinc-300">{opp.amountRange}</span></p>
-                    <p>Focus: {opp.focus}</p>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-[10px]">
-                    <span className="text-amber-600 font-medium">Deadline: {opp.deadline}</span>
-                    <a 
-                      href={opp.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-flex items-center gap-0.5 text-green-700 hover:underline font-bold"
-                    >
-                      Apply website <ExternalLink className="size-2.5" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Verified opportunities live in their own catalogue */}
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Calendar className="size-4.5 text-green-700" /> Funding programmes
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              Grants, accelerators and competitions are listed in Opportunities. Each one is checked against the
+              organiser&apos;s own page and shows when it was last verified. Anza does not generate programme names,
+              amounts or deadlines.
+            </p>
+            <Link
+              href="/dashboard/opportunities"
+              className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-green-700 hover:underline"
+            >
+              Browse verified opportunities <ExternalLink className="size-3" />
+            </Link>
           </div>
 
           {/* AI Advisor Recommendations */}

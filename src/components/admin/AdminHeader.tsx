@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from "@/src/components/shared/ThemeToggle"
 import { AdminUserContext } from "@/src/lib/admin-guard"
-import { Shield, Sparkles } from "lucide-react"
+import { Shield } from "lucide-react"
 
 export function AdminHeader({ adminContext }: { adminContext: AdminUserContext }) {
   return (

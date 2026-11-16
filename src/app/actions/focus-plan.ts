@@ -7,38 +7,15 @@ import {
   readWeeklyFocusPlan,
   type WeeklyFocusPlan,
 } from "@/src/lib/focus-plan"
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
-import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { checkAiRateLimit } from "@/src/lib/rate-limiter"
+import type { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import type { Json } from "@/src/lib/database.types"
+import { getProjectAccess } from "@/src/lib/workspace-access"
+import { cleanText } from "@/src/lib/validation"
 import { revalidatePath } from "next/cache"
 
 async function getOwnedProject(projectId: string) {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user || !projectId) return { error: "Please sign in." as const }
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("id, name, industry, city, country_code")
-    .eq("owner_id", user.id)
-    .maybeSingle()
-  if (!startup) return { error: "Startup not found." as const }
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, title, description, target_audience, metadata")
-    .eq("id", projectId)
-    .eq("startup_id", startup.id)
-    .maybeSingle()
-  if (!project) return { error: "Project not found." as const }
-
-  const metadata =
-    project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata)
-      ? (project.metadata as Record<string, unknown>)
-      : {}
-
-  return { supabase, user, startup, project, metadata }
+  return getProjectAccess(projectId)
 }
 
 function tasksFromMetadata(metadata: Record<string, unknown>) {
@@ -49,6 +26,8 @@ function tasksFromMetadata(metadata: Record<string, unknown>) {
     .map((t) => {
       const task = t as Record<string, unknown>
       return {
+        // Keep every other field (assignee, due date) when tasks are written back.
+        ...task,
         id: String(task.id || ""),
         title: String(task.title || "Untitled"),
         tag: String(task.tag || "Custom"),
@@ -66,7 +45,7 @@ async function savePlan(
 ) {
   const { error } = await supabase
     .from("projects")
-    .update({ metadata: { ...metadata, weekly_focus_plan: plan } as any })
+    .update({ metadata: { ...metadata, weekly_focus_plan: plan } as unknown as Json })
     .eq("id", projectId)
   return error
 }
@@ -108,7 +87,7 @@ export async function regenerateWeeklyFocusPlan(
   if (mode === "derived") {
     const plan = buildDerivedFocusPlan(tasks, startup.name)
     const error = await savePlan(supabase, projectId, metadata, plan)
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: "Could not save your changes. Please try again." }
     revalidatePath("/dashboard")
     return { success: true, plan }
   }
@@ -136,7 +115,7 @@ ${incomplete || "(none — invent 3 practical launch priorities)"}`
 
   const rateLimit = await checkAiRateLimit(user.id)
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+    return { success: false, error: rateLimit.message }
   }
 
   try {
@@ -165,12 +144,12 @@ ${incomplete || "(none — invent 3 practical launch priorities)"}`
     }
 
     const error = await savePlan(supabase, projectId, metadata, plan)
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: "Could not save your changes. Please try again." }
     revalidatePath("/dashboard")
     return { success: true, plan }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error"
-    return { success: false, error: "Could not generate focus plan: " + message }
+    console.error("regenerateWeeklyFocusPlan", err instanceof Error ? err.message : err)
+    return { success: false, error: "Could not generate a focus plan right now. Please try again." }
   }
 }
 
@@ -205,10 +184,10 @@ export async function toggleFocusPriority(
 
   const { error } = await supabase
     .from("projects")
-    .update({ metadata: metadataNext as any })
+    .update({ metadata: metadataNext as unknown as Json })
     .eq("id", projectId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: "Could not save your changes. Please try again." }
   revalidatePath("/dashboard")
   return { success: true, plan: next }
 }
@@ -228,12 +207,12 @@ export async function completeWeeklyCheckIn(
     ...plan,
     checkIn: {
       completedAt: new Date().toISOString(),
-      note: note.trim().slice(0, 500),
+      note: cleanText(note, 500),
     },
   }
 
   const error = await savePlan(supabase, projectId, metadata, next)
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: "Could not save your changes. Please try again." }
   revalidatePath("/dashboard")
   return { success: true, plan: next }
 }

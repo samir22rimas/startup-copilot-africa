@@ -5,12 +5,16 @@ import { z } from "zod"
 
 import { authCallbackUrl, getSiteUrl, passwordResetCallbackUrl } from "@/src/lib/site-url"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { safePostAuthPath } from "@/src/lib/validation"
 
 export type AuthState = { error?: string; message?: string }
 
 const credentialsSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(254),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters.")
+    .max(128, "Password must be at most 128 characters."),
   fullName: z.string().trim().min(2, "Enter your full name.").max(120).optional(),
 })
 
@@ -51,6 +55,8 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
   }
 
   const supabase = await createSupabaseServerClient()
+  // Where to land afterwards (e.g. a team invitation) — validated, never an open redirect.
+  const next = safePostAuthPath(getField(formData, "next"))
 
   if (mode === "sign-in") {
     const { error } = await supabase.auth.signInWithPassword({
@@ -59,7 +65,7 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
     })
 
     if (error) return { error: "We could not sign you in. Check your email and password." }
-    redirect("/dashboard")
+    redirect(next)
   }
 
   if (mode === "sign-up") {
@@ -70,14 +76,17 @@ export async function submitAuth(_: AuthState, formData: FormData): Promise<Auth
       password: parsed.data.password,
       options: {
         data: { full_name: parsed.data.fullName },
-        emailRedirectTo: authCallbackUrl(await getSiteUrl(), "/dashboard"),
+        emailRedirectTo: authCallbackUrl(await getSiteUrl(), next),
       },
     })
 
     if (error) {
       const friendlyError = getAuthErrorMessage(error)
-      // Always return a string — never expose raw SDK messages like "{}"
-      return { error: friendlyError ?? (typeof error.message === "string" && error.message && error.message !== "{}" ? error.message : "Sign up failed. Please try again.") }
+      // Only password-policy messages are passed through; anything else stays
+      // generic so the form never reveals whether an account already exists.
+      const raw = typeof error.message === "string" ? error.message : ""
+      const passwordHint = /password/i.test(raw) && raw.length < 200 ? raw : null
+      return { error: friendlyError ?? passwordHint ?? "Sign up failed. Please try again." }
     }
     return { message: "Check your email to confirm your account, then sign in." }
   }
@@ -106,6 +115,7 @@ export async function updatePassword(_: AuthState, formData: FormData): Promise<
   const password = getField(formData, "password")
   const confirmation = getField(formData, "confirmation")
   if (password.length < 8) return { error: "Password must be at least 8 characters." }
+  if (password.length > 128) return { error: "Password must be at most 128 characters." }
   if (password !== confirmation) return { error: "Passwords do not match." }
 
   const supabase = await createSupabaseServerClient()

@@ -1,10 +1,59 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { unstable_rethrow } from "next/navigation"
 import { verifyAdminSession } from "@/src/lib/admin-guard"
+import type { Database, Json } from "@/src/lib/database.types"
+import { PLAN_LIMITS, getPlanTier, isPlanTier, type UserPlanTier as PlanTier } from "@/src/lib/plans"
 import { getSupabaseAdmin } from "@/src/lib/supabase/admin"
+import { isUuid } from "@/src/lib/validation"
 
-export type UserPlanTier = "Free" | "Starter" | "Pro" | "Enterprise"
+export type UserPlanTier = PlanTier
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"]
+
+const NOT_AUTHORIZED = "You are not authorized to perform this action."
+
+/**
+ * Every admin action starts here. Returns the service-role client only for a
+ * verified platform admin and throws otherwise, so nothing below can run for
+ * anyone else — these functions are callable by any browser as server actions.
+ */
+async function requireAdmin() {
+  const session = await verifyAdminSession({ throwOnUnauthorized: false })
+  if (!session) throw new Error(NOT_AUTHORIZED)
+  return getSupabaseAdmin()
+}
+
+/** Append-only trail of what platform admins changed. Best-effort. */
+async function recordAdminAudit(
+  action: string,
+  target: { type: string; id: string },
+  details: Record<string, string | number | boolean | null> = {},
+) {
+  try {
+    const session = await verifyAdminSession({ throwOnUnauthorized: false })
+    await getSupabaseAdmin().from("audit_logs").insert({
+      actor_id: session?.user.id ?? null,
+      actor_email: session?.user.email ?? null,
+      action,
+      target_type: target.type,
+      target_id: target.id,
+      details,
+    })
+  } catch (error) {
+    console.warn("[admin] audit entry not recorded:", error instanceof Error ? error.message : error)
+  }
+}
+
+/** Never leak raw database/provider errors to the client. */
+function publicError(err: unknown, fallback: string) {
+  // Let Next.js control-flow signals (redirects, dynamic rendering) pass through.
+  unstable_rethrow(err)
+  if (err instanceof Error && err.message === NOT_AUTHORIZED) return NOT_AUTHORIZED
+  console.error("[admin]", err)
+  return fallback
+}
 
 export interface AdminOverviewStats {
   totalUsers: number
@@ -94,7 +143,7 @@ export interface AdminUsageLogItem {
   eventName: string
   quantity: number
   occurredAt: string
-  metadata: any
+  metadata: Json
 }
 
 // ----------------------------------------------------
@@ -105,8 +154,7 @@ export async function getAdminOverviewStats(): Promise<{
   data: AdminOverviewStats
 } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     // Auth Users count & data
     const { data: authData } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
@@ -141,30 +189,27 @@ export async function getAdminOverviewStats(): Promise<{
       .from("profiles")
       .select("id, full_name, avatar_url, created_at")
 
-    const profileMap = new Map<string, any>()
+    const profileMap = new Map<string, Partial<ProfileRow>>()
     profiles?.forEach((p) => profileMap.set(p.id, p))
 
     // Calculate plan distribution & MRR estimate
     const planDistribution: Record<UserPlanTier, number> = {
       Free: 0,
-      Starter: 0,
       Pro: 0,
-      Enterprise: 0,
+      Team: 0,
     }
 
     let mrrCents = 0
 
     users.forEach((u) => {
-      const tier = (u.user_metadata?.plan_tier as UserPlanTier) || "Free"
+      const tier = getPlanTier(u)
       if (planDistribution[tier] !== undefined) {
         planDistribution[tier]++
       } else {
         planDistribution.Free++
       }
 
-      if (tier === "Starter") mrrCents += 1900
-      else if (tier === "Pro") mrrCents += 4900
-      else if (tier === "Enterprise") mrrCents += 19900
+      mrrCents += PLAN_LIMITS[tier].monthlyPriceUsd * 100
     })
 
     // Recent 5 Users
@@ -178,7 +223,7 @@ export async function getAdminOverviewStats(): Promise<{
         email: u.email || "",
         fullName: prof?.full_name || u.user_metadata?.full_name || u.email?.split("@")[0] || "User",
         createdAt: u.created_at,
-        tier: (u.user_metadata?.plan_tier as UserPlanTier) || "Free",
+        tier: getPlanTier(u),
       }
     })
 
@@ -211,9 +256,8 @@ export async function getAdminOverviewStats(): Promise<{
         recentFeedback,
       },
     }
-  } catch (err: any) {
-    console.error("Error in getAdminOverviewStats:", err)
-    return { success: false, error: err.message || "Failed to load admin stats." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load admin stats.") }
   }
 }
 
@@ -225,8 +269,7 @@ export async function getAdminUsersList(options?: {
   tierFilter?: string
 }): Promise<{ success: true; users: AdminUserListItem[] } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     const { data: authData } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const authUsers = authData?.users || []
@@ -235,7 +278,7 @@ export async function getAdminUsersList(options?: {
     const { data: startups } = await supabase.from("startups").select("owner_id")
     const { data: feedbacks } = await supabase.from("user_feedback").select("user_id")
 
-    const profileMap = new Map<string, any>()
+    const profileMap = new Map<string, Partial<ProfileRow>>()
     profiles?.forEach((p) => profileMap.set(p.id, p))
 
     const startupCounts = new Map<string, number>()
@@ -250,7 +293,7 @@ export async function getAdminUsersList(options?: {
 
     let result: AdminUserListItem[] = authUsers.map((u) => {
       const prof = profileMap.get(u.id)
-      const tier = (u.user_metadata?.plan_tier as UserPlanTier) || "Free"
+      const tier = getPlanTier(u)
       const fullName = prof?.full_name || u.user_metadata?.full_name || u.email?.split("@")[0] || "User"
       return {
         id: u.id,
@@ -282,9 +325,8 @@ export async function getAdminUsersList(options?: {
     result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return { success: true, users: result }
-  } catch (err: any) {
-    console.error("Error in getAdminUsersList:", err)
-    return { success: false, error: err.message || "Failed to load users." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load users.") }
   }
 }
 
@@ -296,24 +338,40 @@ export async function updateUserPlanTierAction(
   newTier: UserPlanTier
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
-    // Update user auth metadata
+    if (!isUuid(userId) || !isPlanTier(newTier)) {
+      return { success: false, error: "Invalid user or plan." }
+    }
+
+    // app_metadata is writable only with the service role — users cannot change it themselves.
     const { error: authErr } = await supabase.auth.admin.updateUserById(userId, {
-      user_metadata: { plan_tier: newTier },
+      app_metadata: { plan_tier: newTier },
     })
 
     if (authErr) {
-      return { success: false, error: authErr.message }
+      console.error("[admin] plan update failed:", authErr.message)
+      return { success: false, error: "Failed to update user plan." }
     }
+
+    // Billing record (no payment provider yet: provider stays null = set by an admin).
+    const { error: subErr } = await supabase
+      .from("subscriptions")
+      .upsert(
+        { user_id: userId, plan: newTier.toLowerCase() as "free" | "pro" | "team", status: "active" },
+        { onConflict: "user_id" },
+      )
+    if (subErr && subErr.code !== "42P01" && subErr.code !== "PGRST205") {
+      console.error("[admin] subscription record failed:", subErr.message)
+    }
+    await recordAdminAudit("plan.update", { type: "user", id: userId }, { plan: newTier })
 
     revalidatePath("/admin")
     revalidatePath("/admin/users")
     revalidatePath("/admin/subscriptions")
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to update user plan." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to update user plan.") }
   }
 }
 
@@ -325,8 +383,7 @@ export async function getAdminStartupsList(options?: {
   stageFilter?: string
 }): Promise<{ success: true; startups: AdminStartupListItem[] } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     const { data: startupsData } = await supabase
       .from("startups")
@@ -383,8 +440,8 @@ export async function getAdminStartupsList(options?: {
     }
 
     return { success: true, startups: result }
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load startups." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load startups.") }
   }
 }
 
@@ -396,8 +453,7 @@ export async function getAdminFeedbackList(options?: {
   search?: string
 }): Promise<{ success: true; feedback: AdminFeedbackItem[] } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     let query = supabase.from("user_feedback").select("*").order("created_at", { ascending: false })
 
@@ -430,7 +486,7 @@ export async function getAdminFeedbackList(options?: {
         rating: f.rating,
         pageUrl: f.page_url,
         createdAt: f.created_at,
-        status: (f as any).status || "open",
+        status: "open",
       }
     })
 
@@ -445,8 +501,8 @@ export async function getAdminFeedbackList(options?: {
     }
 
     return { success: true, feedback: result }
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load feedback list." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load feedback list.") }
   }
 }
 
@@ -463,8 +519,7 @@ export async function getAdminSubscriptions(): Promise<{
   }
 } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     const { data: authData } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const users = authData?.users || []
@@ -475,21 +530,14 @@ export async function getAdminSubscriptions(): Promise<{
       if (p.full_name) profileMap.set(p.id, p.full_name)
     })
 
-    const tierPrices: Record<UserPlanTier, number> = {
-      Free: 0,
-      Starter: 19,
-      Pro: 49,
-      Enterprise: 199,
-    }
-
-    const tierCounts: Record<UserPlanTier, number> = { Free: 0, Starter: 0, Pro: 0, Enterprise: 0 }
+    const tierCounts: Record<UserPlanTier, number> = { Free: 0, Pro: 0, Team: 0 }
     let mrr = 0
     let activeCount = 0
 
     const subscriptions: AdminSubscriptionItem[] = users.map((u) => {
-      const tier = (u.user_metadata?.plan_tier as UserPlanTier) || "Free"
+      const tier = getPlanTier(u)
       tierCounts[tier] = (tierCounts[tier] || 0) + 1
-      const price = tierPrices[tier] || 0
+      const price = PLAN_LIMITS[tier].monthlyPriceUsd
       if (tier !== "Free") {
         mrr += price
         activeCount++
@@ -517,8 +565,8 @@ export async function getAdminSubscriptions(): Promise<{
         tierCounts,
       },
     }
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load subscriptions." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load subscriptions.") }
   }
 }
 
@@ -530,8 +578,7 @@ export async function getAdminUsageLogs(): Promise<{
   logs: AdminUsageLogItem[]
 } | { success: false; error: string }> {
   try {
-    await verifyAdminSession()
-    const supabase = getSupabaseAdmin()
+    const supabase = await requireAdmin()
 
     const { data: events } = await supabase
       .from("usage_events")
@@ -556,7 +603,7 @@ export async function getAdminUsageLogs(): Promise<{
     }))
 
     return { success: true, logs }
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load usage logs." }
+  } catch (err: unknown) {
+    return { success: false, error: publicError(err, "Failed to load usage logs.") }
   }
 }

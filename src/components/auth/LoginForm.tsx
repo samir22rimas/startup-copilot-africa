@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { authCallbackUrl, getClientSiteUrl } from "@/src/lib/site-url.shared"
 import { createSupabaseBrowserClient } from "@/src/lib/supabase/client"
+import { safePostAuthPath } from "@/src/lib/validation"
 
 const initialState: AuthState = {}
 
@@ -20,17 +21,21 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
   const searchParams = useSearchParams()
 
   const oauthError = searchParams.get("error")
+  // Where to continue after signing in (e.g. a team invitation). Validated
+  // here and again on the server, so it can only be a known in-app path.
+  const next = safePostAuthPath(searchParams.get("next"))
+  const isInvite = next.startsWith("/invite/")
 
+  // Only fixed messages are shown: text from the URL is never rendered, so a
+  // crafted link cannot put words in the app's mouth.
   let urlErrorMessage: string | null = null
   if (oauthError) {
-    if (oauthError === "oauth" || oauthError === "callback") {
-      urlErrorMessage = "Google authentication failed or was cancelled. Please try again."
-    } else if (oauthError === "missing-code") {
+    if (oauthError === "missing-code") {
       urlErrorMessage = "Authentication code missing. Please sign in again."
     } else if (oauthError === "configuration") {
-      urlErrorMessage = "Supabase configuration is missing. Please check your environment setup."
+      urlErrorMessage = "Sign-in is not configured correctly. Please contact support."
     } else {
-      urlErrorMessage = decodeURIComponent(oauthError)
+      urlErrorMessage = "Authentication failed or was cancelled. Please try again."
     }
   }
 
@@ -43,7 +48,7 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: authCallbackUrl(getClientSiteUrl(), "/dashboard"),
+          redirectTo: authCallbackUrl(getClientSiteUrl(), next),
           queryParams: {
             prompt: "select_account",
           },
@@ -68,6 +73,12 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
   return (
     <form action={action} className="w-full max-w-sm mx-auto space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
       <input type="hidden" name="mode" value={isLogin ? "sign-in" : "sign-up"} />
+      <input type="hidden" name="next" value={next} />
+      {isInvite && (
+        <p className="rounded-xl border border-green-200/60 bg-green-50 px-4 py-2.5 text-sm font-semibold leading-snug text-green-800 dark:bg-green-950/20 dark:text-green-400">
+          Sign in with the email your invitation was sent to — you will go straight back to it.
+        </p>
+      )}
       <div className="space-y-2">
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">{isLogin ? "Welcome back" : "Create your account"}</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{isLogin ? "Enter your credentials to access your startup dashboard." : "Start building your founder workspace today."}</p>

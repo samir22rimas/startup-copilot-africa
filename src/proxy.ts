@@ -1,11 +1,17 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { safePostAuthPath } from "@/src/lib/validation"
+
 /**
- * Proxy: Protect all /dashboard routes.
+ * Proxy: protect all /dashboard and /admin routes.
  * Unauthenticated users are redirected to /sign-in.
  * Authenticated users visiting /sign-in, /sign-up, /forgot-password are
- * redirected to /dashboard to avoid showing auth pages to logged-in users.
+ * redirected to /dashboard (or a validated `next` path, e.g. an invitation)
+ * to avoid showing auth pages to logged-in users.
+ *
+ * This is a first line of defence only: every page and server action also
+ * verifies the session itself, and row-level security guards the data.
  */
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
@@ -17,9 +23,7 @@ export async function proxy(request: NextRequest) {
     searchParams.forEach((value, key) => {
       callbackUrl.searchParams.set(key, value)
     })
-    if (!callbackUrl.searchParams.has("next")) {
-      callbackUrl.searchParams.set("next", "/dashboard")
-    }
+    callbackUrl.searchParams.set("next", safePostAuthPath(searchParams.get("next")))
     return NextResponse.redirect(callbackUrl)
   }
 
@@ -54,7 +58,13 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Protected routes — require authentication
-  if (pathname.startsWith("/dashboard") && !user) {
+  const isProtected =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
+
+  if (isProtected && !user) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set("redirectedFrom", pathname)
     return NextResponse.redirect(signInUrl)
@@ -68,7 +78,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/forgot-password"
 
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+    return NextResponse.redirect(new URL(safePostAuthPath(searchParams.get("next")), request.url))
   }
 
   return response

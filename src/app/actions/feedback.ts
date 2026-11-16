@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 import { z } from "zod"
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
+import { checkRateLimit } from "@/src/lib/rate-limiter"
 
 export type FeedbackCategory = "bug" | "feature" | "improvement" | "other"
 
@@ -30,9 +30,10 @@ export async function submitUserFeedback(formData: {
     return { success: false, error: "You must be signed in to submit feedback." }
   }
 
-  const rateLimit = await checkAiRateLimit(user.id)
+  // Feedback has its own small budget and never consumes the AI allowance.
+  const rateLimit = await checkRateLimit(user.id, "feedback", { maxRequests: 5, windowSeconds: 600 })
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+    return { success: false, error: rateLimit.message }
   }
 
   const parsed = feedbackSchema.safeParse(formData)
@@ -53,7 +54,7 @@ export async function submitUserFeedback(formData: {
 
   if (error) {
     console.error("Error submitting feedback:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: "Could not send your feedback. Please try again." }
   }
 
   revalidatePath("/dashboard")

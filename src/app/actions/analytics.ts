@@ -1,15 +1,15 @@
 "use server";
 
+import type { Json } from "@/src/lib/database.types";
+import { getProjectAccess } from "@/src/lib/workspace-access";
+import { isStorableObject } from "@/src/lib/validation";
 import {
   type TrackedMetrics,
   hasTrackedMetrics,
   readMetadata,
   readTrackedMetrics,
 } from "@/src/lib/data-truth";
-import {
-  AI_RATE_LIMIT_MESSAGE,
-  checkAiRateLimit,
-} from "@/src/lib/rate-limiter";
+import { checkAiRateLimit } from "@/src/lib/rate-limiter";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -312,34 +312,9 @@ export async function generateAnalyticsWorkspace(
   | { success: true; workspace: AnalyticsWorkspace }
   | { success: false; error: string }
 > {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !projectId)
-    return {
-      success: false,
-      error: "Please sign in to generate your workspace.",
-    };
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select(
-      "id, name, city, country_code, industry, estimated_budget_cents, budget_currency",
-    )
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!startup)
-    return { success: false, error: "Your startup could not be found." };
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, title, description, target_audience, metadata")
-    .eq("id", projectId)
-    .eq("startup_id", startup.id)
-    .maybeSingle();
-  if (!project)
-    return { success: false, error: "This project is not available to you." };
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return { success: false, error: access.error };
+  const { supabase, user, startup, project } = access;
 
   const currency = startup.budget_currency || "USD";
   const metadata = readMetadata(project.metadata);
@@ -356,7 +331,7 @@ Founder-reported (tracked) metrics — use as anchors for a realistic projection
 
   const rateLimit = await checkAiRateLimit(user.id);
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE };
+    return { success: false, error: rateLimit.message };
   }
 
   const systemPrompt = `You are an expert Data Scientist advising African startups.
@@ -445,7 +420,7 @@ ${trackedContext}`;
   const { error } = await supabase
     .from("projects")
     .update({
-      metadata: { ...metadata, analytics_workspace: workspace } as any,
+      metadata: { ...metadata, analytics_workspace: workspace } as unknown as Json,
     })
     .eq("id", project.id);
 
@@ -466,28 +441,9 @@ export async function saveTrackedMetrics(
 ): Promise<
   { success: true; metrics: TrackedMetrics } | { success: false; error: string }
 > {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !projectId)
-    return { success: false, error: "Please sign in to save metrics." };
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!startup)
-    return { success: false, error: "Your startup could not be found." };
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, metadata")
-    .eq("id", projectId)
-    .eq("startup_id", startup.id)
-    .maybeSingle();
-  if (!project) return { success: false, error: "Project not found." };
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return { success: false, error: access.error };
+  const { supabase, project } = access;
 
   const metadata = readMetadata(project.metadata);
   const metrics: TrackedMetrics = {
@@ -508,10 +464,10 @@ export async function saveTrackedMetrics(
 
   const { error } = await supabase
     .from("projects")
-    .update({ metadata: { ...metadata, tracked_metrics: metrics } as any })
+    .update({ metadata: { ...metadata, tracked_metrics: metrics } as unknown as Json })
     .eq("id", projectId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: "Could not save your changes. Please try again." };
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/analytics");
@@ -522,6 +478,7 @@ export async function saveAnalyticsWorkspace(
   projectId: string,
   workspace: AnalyticsWorkspace,
 ): Promise<{ success: true } | { success: false; error: string }> {
+  if (!isStorableObject(workspace)) return { success: false, error: "That is too much content to save. Shorten it and try again." };
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -542,11 +499,11 @@ export async function saveAnalyticsWorkspace(
   const { error } = await supabase
     .from("projects")
     .update({
-      metadata: { ...metadata, analytics_workspace: normalized } as any,
+      metadata: { ...metadata, analytics_workspace: normalized } as unknown as Json,
     })
     .eq("id", projectId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: "Could not save your changes. Please try again." };
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/analytics");

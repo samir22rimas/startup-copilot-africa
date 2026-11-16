@@ -1,11 +1,52 @@
 "use client"
 
-import { deleteKnowledgeDocument, uploadKnowledgeDocument, type VaultDocument } from "@/src/app/actions/documents"
+import {
+  deleteKnowledgeDocument,
+  prepareDocumentUpload,
+  registerUploadedDocument,
+  uploadKnowledgeDocument,
+  type VaultDocument,
+} from "@/src/app/actions/documents"
+import { STORAGE_BUCKETS } from "@/src/lib/constants"
 import { PROVENANCE_HINT } from "@/src/lib/data-truth"
+import {
+  DIRECT_UPLOAD_THRESHOLD_BYTES,
+  DOCUMENT_ACCEPT,
+  DOCUMENT_MAX_BYTES,
+  documentExtension,
+} from "@/src/lib/document-files"
+import { createSupabaseBrowserClient } from "@/src/lib/supabase/client"
 import { FileText, Loader2, Trash2, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
+
+type UploadOutcome = { success: true; document: VaultDocument } | { success: false; error: string }
+
+/**
+ * Small files go through the server action in one request. Larger ones are
+ * sent straight to Supabase Storage (hosting platforms cap request bodies at
+ * a few MB) and then verified and registered server-side.
+ */
+async function uploadDocument(file: File, projectId: string): Promise<UploadOutcome> {
+  if (file.size <= DIRECT_UPLOAD_THRESHOLD_BYTES) {
+    const formData = new FormData()
+    formData.set("file", file)
+    formData.set("projectId", projectId)
+    return uploadKnowledgeDocument(formData)
+  }
+
+  const prepared = await prepareDocumentUpload(projectId, file.name, file.size)
+  if (!prepared.success) return prepared
+
+  const supabase = createSupabaseBrowserClient()
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKETS.startupDocuments)
+    .upload(prepared.storagePath, file, { contentType: prepared.contentType, upsert: false })
+  if (error) return { success: false, error: "The upload failed. Check your connection and try again." }
+
+  return registerUploadedDocument(projectId, prepared.storagePath, file.name)
+}
 
 function formatBytes(bytes: number | null) {
   if (!bytes || bytes <= 0) return "—"
@@ -27,20 +68,34 @@ export function DocumentVault({
   const [uploading, setUploading] = React.useState(false)
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
+  // Adopt fresh server data when the page re-renders (React's "adjust state while rendering" pattern).
+  const [syncedDocuments, setSyncedDocuments] = React.useState(initialDocuments)
+  if (syncedDocuments !== initialDocuments) {
+    setSyncedDocuments(initialDocuments)
     setDocuments(initialDocuments)
-  }, [initialDocuments])
+  }
 
   async function handleUpload(fileList: FileList | null) {
     const file = fileList?.[0]
     if (!file) return
 
+    const resetInput = () => {
+      if (inputRef.current) inputRef.current.value = ""
+    }
+    if (!documentExtension(file.name)) {
+      toast.error("Allowed types: PDF, TXT, Markdown, DOCX.")
+      resetInput()
+      return
+    }
+    if (file.size > DOCUMENT_MAX_BYTES) {
+      toast.error("File must be 25MB or smaller.")
+      resetInput()
+      return
+    }
+
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.set("file", file)
-      formData.set("projectId", projectId)
-      const res = await uploadKnowledgeDocument(formData)
+      const res = await uploadDocument(file, projectId)
       if (!res.success) {
         toast.error(res.error)
         return
@@ -57,7 +112,7 @@ export function DocumentVault({
       toast.error("Upload failed")
     } finally {
       setUploading(false)
-      if (inputRef.current) inputRef.current.value = ""
+      resetInput()
     }
   }
 
@@ -94,7 +149,7 @@ export function DocumentVault({
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.txt,.md,.markdown,.docx,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept={DOCUMENT_ACCEPT}
             className="hidden"
             onChange={(e) => handleUpload(e.target.files)}
           />

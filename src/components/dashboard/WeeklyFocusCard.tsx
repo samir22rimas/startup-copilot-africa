@@ -26,10 +26,13 @@ export function WeeklyFocusCard({
   const [busy, setBusy] = React.useState<"ai" | "derived" | "checkin" | string | null>(null)
   const [note, setNote] = React.useState(initialPlan?.checkIn?.note ?? "")
 
-  React.useEffect(() => {
+  // Adopt fresh server data when the page re-renders.
+  const [syncedPlan, setSyncedPlan] = React.useState(initialPlan)
+  if (syncedPlan !== initialPlan) {
+    setSyncedPlan(initialPlan)
     setPlan(initialPlan)
     setNote(initialPlan?.checkIn?.note ?? "")
-  }, [initialPlan])
+  }
 
   if (!plan) {
     return (

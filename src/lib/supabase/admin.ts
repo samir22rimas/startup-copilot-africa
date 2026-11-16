@@ -45,13 +45,3 @@ export function getSupabaseAdmin(): SupabaseClient<Database> {
 
   return _adminClient
 }
-
-/**
- * @deprecated Use `getSupabaseAdmin()` instead.
- * Kept for backwards compatibility — will throw if service role key is absent.
- */
-export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
-  get(_target, prop) {
-    return (getSupabaseAdmin() as any)[prop]
-  },
-})

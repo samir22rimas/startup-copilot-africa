@@ -5,7 +5,9 @@ import {
   type ResultDocumentType,
   type ResultsWorkspace,
 } from "@/src/app/actions/results";
-import { Download, FileText, Loader2, Sparkles } from "lucide-react";
+import { ExportMenu, type ExportOption } from "@/src/components/shared/ExportMenu";
+import { exportReport } from "@/src/lib/export";
+import { FileText, Loader2, Sparkles } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -49,44 +51,36 @@ export function ResultsWorkspace({
     });
   };
 
-  const downloadWordDocument = (
-    documents = workspace?.documents ?? [],
-    documentName = "complete-business-plan",
-  ) => {
-    if (!workspace || documents.length === 0) return;
-    const escapeHtml = (value: string) =>
-      value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const formatContent = (content: string) =>
-      content
-        .split("\n")
-        .map((line) => {
-          const escaped = escapeHtml(line.replace(/\*\*/g, ""));
-          if (line.startsWith("## ")) return `<h2>${escaped.slice(3)}</h2>`;
-          if (line.startsWith("- "))
-            return `<p class="bullet">${escaped.slice(2)}</p>`;
-          return line ? `<p>${escaped}</p>` : "";
-        })
-        .join("");
-    const sections = documents
-      .map(
-        (item, index) =>
-          `<section class="${index ? "page-break" : ""}"><h1>${escapeHtml(item.type)}</h1>${formatContent(item.content)}</section>`,
-      )
-      .join("");
-    const title =
-      documents.length === 1 ? documents[0].type : "Complete Business Plan";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>@page { size: A4; margin: 2cm; } body { font-family: Calibri, Arial, sans-serif; color: #1f2937; font-size: 11pt; line-height: 1.55; } h1 { color: #0b5d45; font-size: 24pt; margin: 0 0 18pt; } h2 { color: #0b5d45; font-size: 15pt; margin: 18pt 0 7pt; } p { margin: 0 0 9pt; } .bullet { margin-left: 18pt; } .bullet:before { content: "• "; } .page-break { page-break-before: always; }</style></head><body><section><h1>${escapeHtml(startupName)}: ${escapeHtml(title)}</h1><p>Generated ${new Date(workspace.generatedAt).toLocaleDateString()} · ${documents.length} business-planning section${documents.length === 1 ? "" : "s"}</p><p>This document is structured for review, discussion, and iteration.</p></section><div class="page-break"></div>${sections}</body></html>`;
-    const blob = new Blob([html], { type: "application/msword" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${
-      startupName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") || "startup"
-    }-${documentName}.doc`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+  /** PDF and Word options for a set of documents (all six, or just one). */
+  const exportOptions = (
+    documents: ResultsWorkspace["documents"],
+    title: string,
+    name: string,
+  ): ExportOption[] => {
+    if (!workspace) return [];
+    const report = {
+      startupName,
+      title,
+      generatedAt: workspace.generatedAt,
+      sections: documents.map((item) => ({
+        heading: item.type,
+        markdown: item.content,
+      })),
+    };
+    return [
+      {
+        id: "pdf",
+        label: "PDF",
+        hint: "Ready to send or print",
+        run: () => exportReport("pdf", report, name),
+      },
+      {
+        id: "docx",
+        label: "Word (.docx)",
+        hint: "Editable document",
+        run: () => exportReport("docx", report, name),
+      },
+    ];
   };
 
   return (
@@ -121,12 +115,15 @@ export function ResultsWorkspace({
           )}
         </button>
         {workspace && (
-          <button
-            onClick={() => downloadWordDocument()}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-green-200 px-5 text-sm font-bold text-white transition hover:bg-white/10"
-          >
-            <Download className="size-4" /> Download Word
-          </button>
+          <ExportMenu
+            label="Download all"
+            options={exportOptions(
+              workspace.documents,
+              "Complete Business Plan",
+              "complete-business-plan",
+            )}
+            className="h-11 rounded-xl border border-green-200 px-5 text-sm font-bold text-white transition hover:bg-white/10"
+          />
         )}
       </div>
       {error && (
@@ -173,19 +170,15 @@ export function ResultsWorkspace({
                 </div>
               </div>
               {activeDocument && (
-                <button
-                  onClick={() =>
-                    downloadWordDocument(
-                      [activeDocument],
-                      activeDocument.type
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, "-"),
-                    )
-                  }
-                  className="inline-flex items-center gap-2 rounded-lg border border-green-700 px-3 py-2 text-xs font-bold text-green-800 hover:bg-green-50 dark:border-green-500 dark:text-green-300 dark:hover:bg-green-950/40"
-                >
-                  <Download className="size-3.5" /> Download this document
-                </button>
+                <ExportMenu
+                  label="Download"
+                  options={exportOptions(
+                    [activeDocument],
+                    activeDocument.type,
+                    activeDocument.type,
+                  )}
+                  className="rounded-lg border border-green-700 px-3 py-2 text-xs font-bold text-green-800 hover:bg-green-50 dark:border-green-500 dark:text-green-300 dark:hover:bg-green-950/40"
+                />
               )}
             </div>
             <ReactMarkdown

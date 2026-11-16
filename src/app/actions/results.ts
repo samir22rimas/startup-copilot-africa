@@ -1,8 +1,8 @@
 "use server"
 
-import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { getProjectAccess } from "@/src/lib/workspace-access"
 import { generateTextWithFallback } from "@/src/lib/ai-providers"
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
+import { checkAiRateLimit } from "@/src/lib/rate-limiter"
 import { revalidatePath } from "next/cache"
 
 export type ResultDocumentType = "Business Plan" | "SWOT" | "Budget" | "Marketing Strategy" | "Roadmap" | "Elevator Pitch"
@@ -472,28 +472,13 @@ Unlike generic or informal alternatives, ${context.name} is designed around the 
 }
 
 export async function generateResultsWorkspace(projectId: string): Promise<{ success: true; workspace: ResultsWorkspace } | { success: false; error: string }> {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || !projectId) return { success: false, error: "Please sign in to generate your workspace." }
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("id, name, city, country_code, industry, estimated_budget_cents, budget_currency")
-    .eq("owner_id", user.id)
-    .maybeSingle()
-  if (!startup) return { success: false, error: "Your startup could not be found." }
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, title, description, target_audience, metadata")
-    .eq("id", projectId)
-    .eq("startup_id", startup.id)
-    .maybeSingle()
-  if (!project) return { success: false, error: "This project is not available to you." }
+  const access = await getProjectAccess(projectId)
+  if ("error" in access) return { success: false, error: access.error }
+  const { supabase, user, startup, project } = access
 
   const rateLimit = await checkAiRateLimit(user.id)
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+    return { success: false, error: rateLimit.message }
   }
 
   const generatedDocuments = await createAiDocuments({

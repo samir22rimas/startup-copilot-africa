@@ -61,7 +61,7 @@ export function SubscriptionManager({
               Paid Users
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">Starter, Pro, & Enterprise accounts</p>
+          <p className="text-xs text-zinc-400 mt-1">Pro and Team accounts</p>
         </div>
 
         {/* Average Revenue Per User */}
@@ -103,9 +103,8 @@ export function SubscriptionManager({
           >
             <option value="all">All Plans</option>
             <option value="free">Free ($0)</option>
-            <option value="starter">Starter ($19)</option>
-            <option value="pro">Pro ($49)</option>
-            <option value="enterprise">Enterprise ($199)</option>
+            <option value="pro">Pro</option>
+            <option value="team">Team</option>
           </select>
         </div>
       </div>

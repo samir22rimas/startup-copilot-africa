@@ -1,12 +1,43 @@
 "use server"
 
-import { generateTextWithFallback } from "@/src/lib/ai-providers"
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
-import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { buildBusinessContext } from "@/src/lib/ai/context"
+import { baseSystemPrompt, fence } from "@/src/lib/ai/guard"
+import { runAi } from "@/src/lib/ai/service"
+import { cleanText } from "@/src/lib/validation"
+import { requireWorkspace } from "@/src/lib/workspace"
+
+const MAX_PROMPT_LENGTH = 1000
+
+const CONTENT_TYPES = [
+  "social_caption",
+  "linkedin_post",
+  "marketing_email",
+  "product_description",
+  "ad_copy",
+  "campaign_brief",
+] as const
+
+export type ContentType = (typeof CONTENT_TYPES)[number]
+
+const CONTENT_GUIDE: Record<ContentType, string> = {
+  social_caption:
+    "Write a short social media caption (max 80 words) for Facebook, Instagram or a WhatsApp status, with a clear call to action. Add 3 to 5 relevant hashtags on the last line.",
+  linkedin_post:
+    "Write a professional LinkedIn post (max 220 words) in the founder's first-person voice. Use short paragraphs and end with 3 relevant hashtags.",
+  marketing_email:
+    "Write a marketing email: a subject line (max 60 characters) on the first line prefixed with 'Subject:', then a body under 180 words with one clear call to action.",
+  product_description:
+    "Write a product or service description (80 to 130 words): what it is, who it is for, the main benefit, and how to get it. Plain and concrete.",
+  ad_copy:
+    "Write advertising copy in three variants. For each variant give a headline (max 8 words), one or two lines of body text and a call to action.",
+  campaign_brief:
+    "Write a one-page campaign brief with these headings: Objective, Audience, Key message, Channels, Content needed, Timeline, How we measure success. Keep each part to a few lines.",
+}
 
 export type GenerateContentInput = {
   prompt: string
-  /** Target social platform — affects tone and length. */
+  type?: ContentType
+  /** @deprecated use `type`. Kept for older callers. */
   platform?: "linkedin" | "twitter" | "instagram" | "general"
 }
 
@@ -15,130 +46,44 @@ export type GenerateContentResult =
   | { success: false; error: string }
 
 /**
- * Server Action: Generate marketing copy using OpenAI.
- * Verifies the user is authenticated before calling the API.
+ * Generates marketing copy for the active business, in the user's language,
+ * using the business's own context (model, plan, validation notes).
  */
-export async function generateMarketingContent(
-  input: GenerateContentInput,
-): Promise<GenerateContentResult> {
-  // --- Auth guard ---
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export async function generateMarketingContent(input: GenerateContentInput): Promise<GenerateContentResult> {
+  const ws = await requireWorkspace("edit")
+  if ("error" in ws) return { success: false, error: ws.error }
 
-  if (!user) {
-    return { success: false, error: "You must be signed in to generate content." }
+  const prompt = cleanText(input?.prompt, MAX_PROMPT_LENGTH + 1)
+  if (prompt.length < 3) return { success: false, error: "Please provide a topic or prompt." }
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    return { success: false, error: `Prompts can be up to ${MAX_PROMPT_LENGTH} characters.` }
   }
 
-  if (!input.prompt || input.prompt.trim().length < 3) {
-    return { success: false, error: "Please provide a topic or prompt." }
-  }
+  const type: ContentType = CONTENT_TYPES.includes(input.type as ContentType)
+    ? (input.type as ContentType)
+    : input.platform === "linkedin"
+      ? "linkedin_post"
+      : "social_caption"
 
-  const rateLimit = await checkAiRateLimit(user.id)
-  if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
-  }
+  const context = await buildBusinessContext(ws, ["model", "validation"])
 
-  const platform = input.platform ?? "linkedin"
+  const result = await runAi({
+    feature: `marketing.content.${type}`,
+    caller: ws.caller,
+    system: baseSystemPrompt({
+      role: "a marketing copywriter for small businesses and startups in Africa",
+      locale: ws.locale,
+      extra: `${CONTENT_GUIDE[type]}
+Write for this business's real customers and country: natural local tone, local currency, and the payment methods customers actually use where relevant.
+Do not invent testimonials, customer numbers, awards, discounts or prices. If a detail is needed and unknown, leave a clearly marked placeholder in [square brackets].
+Reply with the copy only — no preamble and no explanation.`,
+    }),
+    messages: [{ role: "user", content: `${context}\n\nTopic from the founder:\n${fence("founder_input", prompt, MAX_PROMPT_LENGTH)}` }],
+    maxTokens: 900,
+    temperature: 0.7,
+  })
 
-  const platformGuide: Record<string, string> = {
-    linkedin:
-      "Write a professional LinkedIn post (max 250 words). Use line breaks, emojis sparingly, and 3–5 relevant hashtags at the end.",
-    twitter:
-      "Write a punchy Twitter/X post under 280 characters. No hashtags unless essential.",
-    instagram:
-      "Write an engaging Instagram caption (max 150 words) with a strong opening line and 5–10 relevant hashtags at the end.",
-    general:
-      "Write a compelling social media post suitable for multiple platforms (max 200 words).",
-  }
-
-  try {
-    const content = await generateTextWithFallback(
-      `You are a world-class marketing copywriter specialising in African tech startups.
-You write authentic, engaging content that resonates with both local African audiences and global investors.
-Always write in first person from the perspective of a startup founder.
-${platformGuide[platform]}`,
-      [
-        {
-          role: "user",
-          content: `Write a social media post about: ${input.prompt.trim()}`,
-        },
-      ],
-    )
-
-    if (!content.trim()) {
-      return { success: false, error: "The AI returned an empty response. Please try again." }
-    }
-
-    return { success: true, content: content.trim() }
-  } catch (err) {
-    console.error("[generateMarketingContent] provider error:", err)
-    return {
-      success: false,
-      error: "Failed to generate content. Please try again in a moment.",
-    }
-  }
-}
-
-export type ChatMessage = {
-  role: "user" | "assistant"
-  content: string
-}
-
-export type AiChatResult =
-  | { success: true; reply: string; model: string }
-  | { success: false; error: string }
-
-/**
- * Server Action: Stateless AI chat for the startup copilot.
- * Accepts a full message history so the caller maintains conversation state.
- */
-export async function sendChatMessage(
-  messages: ChatMessage[],
-  systemContext?: string,
-): Promise<AiChatResult> {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, error: "Authentication required." }
-  }
-
-  if (!messages.length) {
-    return { success: false, error: "No messages provided." }
-  }
-
-  const rateLimit = await checkAiRateLimit(user.id)
-  if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
-  }
-
-  const systemPrompt = systemContext
-    ? systemContext
-    : `You are Startup Copilot, an expert AI advisor for early-stage African startup founders.
-You provide actionable, context-aware advice on product development, fundraising, marketing, and operations.
-Keep responses concise and practical. When you don't know something, say so clearly.`
-
-  try {
-    const reply = await generateTextWithFallback(
-      systemPrompt,
-      messages.map((m) => ({ role: m.role, content: m.content })),
-    )
-
-    if (!reply.trim()) {
-      return { success: false, error: "The AI returned an empty response." }
-    }
-
-    return {
-      success: true,
-      reply: reply.trim(),
-      model: "provider-fallback",
-    }
-  } catch (err) {
-    console.error("[sendChatMessage] provider error:", err)
-    return { success: false, error: "Failed to get a response. Please try again." }
-  }
+  if (!result.ok) return { success: false, error: result.error }
+  if (!result.text) return { success: false, error: "The AI returned an empty response. Please try again." }
+  return { success: true, content: result.text }
 }

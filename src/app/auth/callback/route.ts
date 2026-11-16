@@ -2,15 +2,11 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 import type { Database } from "@/src/lib/database.types"
-import { ROUTES } from "@/src/lib/constants"
+import { safePostAuthPath } from "@/src/lib/validation"
 
-const ALLOWED_NEXT_PATHS = new Set<string>([ROUTES.dashboard, ROUTES.updatePassword])
-
+/** Only known same-site paths are honoured, so `next` can never be an open redirect. */
 function resolveNextPath(value: string | null) {
-  if (!value) return ROUTES.dashboard
-
-  const decoded = decodeURIComponent(value)
-  return ALLOWED_NEXT_PATHS.has(decoded) ? decoded : ROUTES.dashboard
+  return safePostAuthPath(value)
 }
 
 export async function GET(request: NextRequest) {
@@ -21,9 +17,7 @@ export async function GET(request: NextRequest) {
 
   if (errorDescription) {
     console.error("Auth OAuth callback error parameter:", errorDescription)
-    return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(errorDescription)}`, request.url)
-    )
+    return NextResponse.redirect(new URL("/sign-in?error=oauth", request.url))
   }
 
   if (!code) {
@@ -50,9 +44,7 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     console.error("Auth code exchange error:", error)
-    return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(error.message || "callback")}`, request.url)
-    )
+    return NextResponse.redirect(new URL("/sign-in?error=callback", request.url))
   }
 
   return response

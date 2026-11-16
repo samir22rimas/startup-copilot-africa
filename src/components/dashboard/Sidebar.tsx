@@ -1,256 +1,351 @@
-"use client";
+"use client"
 
-import { cn } from "@/src/lib/utils";
 import {
   BarChart3,
+  Bot,
+  Briefcase,
   Check,
   ChevronDown,
+  ChevronsUpDown,
   CircleDollarSign,
+  ClipboardCheck,
+  Compass,
   FileText,
   FolderOpen,
   HelpCircle,
-  Home,
+  KanbanSquare,
+  LayoutDashboard,
+  LayoutGrid,
+  Lightbulb,
   Megaphone,
   Plus,
   Scale,
+  Search,
   Settings,
   ShieldCheck,
-} from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import * as React from "react";
+  Users,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import * as React from "react"
 
-const navItems = [
-  { icon: Home, label: "Overview", href: "/dashboard" },
-  { icon: FolderOpen, label: "Documents", href: "/dashboard/documents" },
-  { icon: FileText, label: "Results", href: "/dashboard/results" },
-  { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
-  { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
-  { icon: CircleDollarSign, label: "Funding", href: "/dashboard/funding" },
-  { icon: Scale, label: "Legality", href: "/dashboard/legal" },
-  { icon: HelpCircle, label: "User Guide", href: "/dashboard/guide" },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings" },
-];
+import type { StartupStage } from "@/src/lib/database.types"
+import { useI18n } from "@/src/lib/i18n/client"
+import {
+  NAV_GROUPS,
+  PRIMARY_NAV,
+  isActivePath,
+  suggestedGroupForStage,
+  type NavGroupKey,
+  type NavItem,
+  type NavKey,
+} from "@/src/lib/navigation"
+import { cn } from "@/src/lib/utils"
 
-export function Sidebar({
-  projects,
-  activeProjectId,
-  startups,
-  activeStartupId,
-  isAdmin = false,
-}: {
-  projects: Array<{ id: string; title: string }>
-  activeProjectId?: string | null
+const ICONS: Record<NavKey, LucideIcon> = {
+  overview: LayoutDashboard,
+  copilot: Bot,
+  ideas: Lightbulb,
+  research: Search,
+  validation: ClipboardCheck,
+  model: LayoutGrid,
+  plan: FileText,
+  finance: Wallet,
+  marketing: Megaphone,
+  projects: KanbanSquare,
+  documents: FolderOpen,
+  opportunities: Compass,
+  funding: CircleDollarSign,
+  analytics: BarChart3,
+  legal: Scale,
+  businesses: Briefcase,
+  team: Users,
+  settings: Settings,
+  guide: HelpCircle,
+}
+
+const OPEN_GROUPS_KEY = "anza.nav.groups"
+
+export interface SidebarProps {
   startups: Array<{ id: string; name: string }>
   activeStartupId?: string | null
+  stage?: StartupStage | null
   isAdmin?: boolean
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const activeStartup = startups.find(s => s.id === activeStartupId) ?? startups[0] ?? null
-  const [activeTitle, setActiveTitle] = React.useState(activeStartup?.name ?? "No business selected")
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = React.useState(false)
-  const [switching, setSwitching] = React.useState(false)
+}
+
+function NavLink({ item, pathname, onNavigate }: { item: NavItem; pathname: string; onNavigate?: () => void }) {
+  const { t } = useI18n()
+  const Icon = ICONS[item.key]
+  const active = isActivePath(pathname, item.href)
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium transition-colors",
+        active
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "opacity-80")} aria-hidden="true" />
+      <span className="truncate">{t.nav[item.key]}</span>
+    </Link>
+  )
+}
+
+function BusinessSwitcher({ startups, activeStartupId, onNavigate }: SidebarProps & { onNavigate?: () => void }) {
+  const { t } = useI18n()
+  const router = useRouter()
+  const active = startups.find((s) => s.id === activeStartupId) ?? startups[0] ?? null
+  const [open, setOpen] = React.useState(false)
+  const [switchingTo, setSwitchingTo] = React.useState<string | null>(null)
+  const rootRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    setActiveTitle(activeStartup?.name ?? "No business selected")
-  }, [activeStartup?.name])
-
-  async function handleSelectStartup(startup: { id: string; name: string }) {
-    if (startup.id === activeStartup?.id) {
-      setIsProjectDropdownOpen(false)
-      return
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    setSwitching(true)
-    setActiveTitle(startup.name)
-    setIsProjectDropdownOpen(false)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [open])
+
+  async function select(startup: { id: string; name: string }) {
+    setOpen(false)
+    if (startup.id === active?.id) return
+    setSwitchingTo(startup.name)
     try {
       const { setActiveStartup } = await import("@/src/app/actions/startup-context")
-      const res = await setActiveStartup(startup.id)
-      if (!res.success) {
-        setActiveTitle(activeStartup?.name ?? "No business selected")
-        return
+      const result = await setActiveStartup(startup.id)
+      if (result.success) {
+        onNavigate?.()
+        router.refresh()
       }
-      router.refresh()
     } finally {
-      setSwitching(false)
+      setSwitchingTo(null)
     }
   }
 
+  const label = switchingTo ? t.nav.switching : (active?.name ?? t.nav.noBusiness)
+
   return (
-    <aside
-      className={cn(
-        // Mobile: compact top bar under TopNav (shell locks viewport scroll)
-        "z-30 w-full shrink-0 bg-white dark:bg-zinc-950",
-        "border-b border-zinc-200 dark:border-zinc-800",
-        // Desktop: full remaining height beside main (not h-screen — that sits under TopNav)
-        "md:h-full md:w-64 md:overflow-y-auto md:border-b-0 md:border-r",
-        "flex flex-col",
-      )}
-    >
-      {/* Top row on mobile (project selector + dropdown), stacked normally on desktop */}
-      <div className="p-3 md:p-4 md:space-y-6">
-        <div className="flex items-center gap-2 md:block">
-          {/* Project Selector */}
-          <div className="relative flex-1 min-w-0 md:flex-none">
-            <button
-              onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-              className="w-full flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 md:p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t.nav.switchBusiness}
+        onClick={() => setOpen((value) => !value)}
+        className="flex h-11 w-full items-center gap-2.5 rounded-lg border border-border bg-background px-2.5 text-left transition hover:bg-muted"
+      >
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-[11px] font-bold uppercase text-primary-foreground">
+          {(active?.name ?? "A").charAt(0)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{label}</span>
+        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={t.nav.businessesHeading}
+          className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-lg"
+        >
+          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t.nav.businessesHeading}
+          </p>
+          <div className="max-h-56 overflow-y-auto">
+            {startups.map((startup) => (
+              <button
+                key={startup.id}
+                type="button"
+                role="option"
+                aria-selected={startup.id === active?.id}
+                onClick={() => select(startup)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+              >
+                <span className="truncate">{startup.name}</span>
+                {startup.id === active?.id && <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+          <div className="mt-1 border-t border-border pt-1">
+            <Link
+              href="/dashboard/new"
+              onClick={() => {
+                setOpen(false)
+                onNavigate?.()
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary transition hover:bg-muted"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 shrink-0 rounded-md bg-green-600 flex items-center justify-center text-white font-bold text-xs">
-                  {activeTitle.charAt(0)}
-                </div>
-                <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50 truncate">
-                  {switching ? "Switching…" : activeTitle}
-                </span>
-              </div>
-              <ChevronDown className="w-4 h-4 shrink-0 text-zinc-500" />
-            </button>
-
-            {isProjectDropdownOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsProjectDropdownOpen(false)}
-                />
-                <div className="absolute left-0 right-0 top-12 md:top-14 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden py-1">
-                  <div className="px-3 py-2 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                    Businesses
-                  </div>
-                  {startups.map((startup) => (
-                    <button
-                      key={startup.id}
-                      type="button"
-                      disabled={switching}
-                      onClick={() => handleSelectStartup(startup)}
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
-                    >
-                      {startup.name}
-                      {activeStartup?.id === startup.id && (
-                        <Check className="w-4 h-4 text-green-600" />
-                      )}
-                    </button>
-                  ))}
-                  <div className="border-t border-zinc-100 dark:border-zinc-800 mt-1 pt-1">
-                    <Link
-                      href="/dashboard/new"
-                      onClick={() => setIsProjectDropdownOpen(false)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" /> Create New Business
-                    </Link>
-                  </div>
-                </div>
-              </>
-            )}
+              <Plus className="size-4" aria-hidden="true" /> {t.nav.newBusiness}
+            </Link>
           </div>
-
-          {/* Compact help button, mobile only */}
-          <Link href="/dashboard/guide" className="md:hidden shrink-0 p-2.5 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">
-            <HelpCircle className="w-5 h-5" />
-          </Link>
         </div>
+      )}
+    </div>
+  )
+}
 
-        {/* Navigation */}
-        <nav className="mt-3 md:mt-0 space-y-1">
-          <div className="hidden md:block text-xs font-bold text-zinc-400 dark:text-zinc-500 mb-3 px-3 uppercase tracking-wider">
-            Menu
-          </div>
+/** Navigation body, shared by the desktop sidebar and the mobile drawer. */
+export function SidebarContent({ onNavigate, ...props }: SidebarProps & { onNavigate?: () => void }) {
+  const { t } = useI18n()
+  const pathname = usePathname()
+  const suggested = suggestedGroupForStage(props.stage)
+  const activeGroup = NAV_GROUPS.find((group) => group.items.some((item) => isActivePath(pathname, item.href)))?.key
 
-          {/* Mobile: horizontal scroll strip of icon+label pills */}
-          <div className="flex md:hidden gap-1 overflow-x-auto pb-1 -mx-3 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors",
-                    isActive
-                      ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
-                      : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50",
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "w-4 h-4",
-                      isActive
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-zinc-400",
-                    )}
-                  />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
+  // Which groups the person has opened or closed by hand; everything else
+  // follows the defaults (suggested group + the group of the current page).
+  const [overrides, setOverrides] = React.useState<Partial<Record<NavGroupKey, boolean>>>({})
 
-          {/* Desktop: full vertical nav */}
-          <div className="hidden md:block space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 group",
-                    isActive
-                      ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 shadow-sm shadow-green-700/5"
-                      : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-50 hover:translate-x-1",
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
-                      isActive
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300",
-                    )}
-                  />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
+  React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(OPEN_GROUPS_KEY)
+      if (saved) setOverrides(JSON.parse(saved))
+    } catch {
+      // Preferences are optional.
+    }
+  }, [])
+
+  function isOpen(key: NavGroupKey) {
+    if (key === activeGroup) return true
+    return overrides[key] ?? (key === suggested || key === "groupWorkspace")
+  }
+
+  function toggle(key: NavGroupKey) {
+    setOverrides((current) => {
+      const next = { ...current, [key]: !isOpen(key) }
+      try {
+        window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(next))
+      } catch {
+        // Preferences are optional.
+      }
+      return next
+    })
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="space-y-3 p-3">
+        <BusinessSwitcher {...props} onNavigate={onNavigate} />
+        <nav aria-label={t.nav.overview} className="space-y-0.5">
+          {PRIMARY_NAV.map((item) => (
+            <NavLink key={item.key} item={item} pathname={pathname} onNavigate={onNavigate} />
+          ))}
         </nav>
       </div>
 
-      {/* Helpful next action — no fake Upgrade CTA until billing ships */}
-      <div className="mt-auto hidden p-4 md:block">
-        <Link
-          href="/dashboard/documents"
-          className="block rounded-2xl border border-green-200 bg-green-50/80 p-4 transition hover:bg-green-50 dark:border-green-900/40 dark:bg-green-950/30 dark:hover:bg-green-950/50"
-        >
-          <div className="mb-1 flex items-center gap-2 text-green-800 dark:text-green-300">
-            <FolderOpen className="h-4 w-4" />
-            <h4 className="text-sm font-bold">Ground Copilot in your files</h4>
-          </div>
-          <p className="text-xs leading-relaxed text-green-900/70 dark:text-green-200/70">
-            Upload a brief or research notes so advice uses your real materials.
-          </p>
-        </Link>
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
+        {NAV_GROUPS.map((group) => {
+          const open = isOpen(group.key)
+          const panelId = `nav-${group.key}`
+          return (
+            <div key={group.key}>
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => toggle(group.key)}
+                className="flex h-7 w-full items-center justify-between rounded-md px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground transition hover:text-foreground"
+              >
+                <span className="flex items-center gap-1.5">
+                  {t.nav[group.key]}
+                  {group.key === suggested && (
+                    <span className="size-1.5 rounded-full bg-amber-500" title={t.nav.suggestedForStage} />
+                  )}
+                </span>
+                <ChevronDown className={cn("size-3.5 transition-transform", !open && "-rotate-90")} aria-hidden="true" />
+              </button>
+              {open && (
+                <div id={panelId} className="mb-2 mt-0.5 space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavLink key={item.key} item={item} pathname={pathname} onNavigate={onNavigate} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
 
-        <Link
-          href="/dashboard/guide"
-          className="mt-4 flex items-center gap-2 px-2 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50"
-        >
-          <HelpCircle className="h-4 w-4" /> Help &amp; Support
-        </Link>
-
-        {isAdmin && (
+      {props.isAdmin && (
+        <div className="border-t border-border p-3">
           <Link
             href="/admin"
-            className="mt-2 flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 transition-colors hover:bg-green-100 dark:hover:bg-green-900/60"
+            onClick={onNavigate}
+            className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" /> Admin Portal
+            <ShieldCheck className="size-4 text-primary" aria-hidden="true" /> {t.nav.admin}
           </Link>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Desktop sidebar. On small screens the same content lives in <MobileSidebar />. */
+export function Sidebar(props: SidebarProps) {
+  return (
+    <aside className="hidden h-full w-60 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">
+      <SidebarContent {...props} />
     </aside>
-  );
+  )
+}
+
+export function MobileSidebar({ open, onClose, ...props }: SidebarProps & { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
+
+  React.useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => document.removeEventListener("keydown", onKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] lg:hidden">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.nav.openMenu}
+        className="absolute inset-y-0 left-0 flex w-[min(20rem,86vw)] flex-col border-r border-sidebar-border bg-sidebar shadow-2xl"
+      >
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
+          <span className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">
+            <Image src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md object-contain" />
+            Anza
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.nav.closeMenu}
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1">
+          <SidebarContent {...props} onNavigate={onClose} />
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -1,6 +1,7 @@
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
-import { getMyStartup } from "@/src/features/business/services/startup.service"
+import { getPlanUsage } from "@/src/app/actions/settings"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { canManageStartup, getActiveStartupAccess } from "@/src/lib/workspace-access"
 import { SettingsForm } from "./SettingsForm"
 import { redirect } from "next/navigation"
 
@@ -13,8 +14,13 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/sign-in")
 
-  const profile = await getCurrentProfile()
-  const startup = await getMyStartup()
+  const [profile, access, planUsage] = await Promise.all([
+    getCurrentProfile(),
+    getActiveStartupAccess(),
+    getPlanUsage(),
+  ])
+  const startup = "error" in access ? null : access.startup
+  const canEditStartup = "error" in access ? false : canManageStartup(access.role)
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
@@ -26,6 +32,8 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsForm
+        canEditStartup={canEditStartup}
+        planUsage={planUsage}
         user={{
           email: user.email || "",
           fullName: profile?.full_name || "",

@@ -1,8 +1,10 @@
-import { createSupabaseServerClient } from "@/src/lib/supabase/server"
-import { supabaseAdmin } from "@/src/lib/supabase/admin"
+import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
 import type { Database } from "@/src/lib/database.types"
+import { getSupabaseAdmin } from "@/src/lib/supabase/admin"
+import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 type StartupInsert = Database["public"]["Tables"]["startups"]["Insert"]
+type StartupRow = Database["public"]["Tables"]["startups"]["Row"]
 
 function slugify(name: string): string {
   return name
@@ -10,11 +12,16 @@ function slugify(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
+    .slice(0, 60)
+    .replace(/-$/, "")
 }
 
-import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
-
-export async function getAllMyStartups() {
+/**
+ * Every startup the signed-in user belongs to — as owner, co-founder or team
+ * member. Row-level security does the filtering, so this is exactly the set
+ * of workspaces the user is allowed to open.
+ */
+export async function getAllMyStartups(): Promise<StartupRow[]> {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -22,7 +29,6 @@ export async function getAllMyStartups() {
   const { data, error } = await supabase
     .from("startups")
     .select("*")
-    .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) {
@@ -53,7 +59,7 @@ export async function createStartup(input: {
   industry?: string | null
   estimated_budget_cents?: number | null
   budget_currency?: string
-}): Promise<{ startup: Database["public"]["Tables"]["startups"]["Row"] | null; error: string | null }> {
+}): Promise<{ startup: StartupRow | null; error: string | null }> {
   const supabase = await createSupabaseServerClient()
   const { data: { user }, error: userErr } = await supabase.auth.getUser()
   if (userErr || !user) {
@@ -61,8 +67,7 @@ export async function createStartup(input: {
   }
 
   // Ensure a profiles row exists BEFORE inserting into startups —
-  // startups.owner_id references profiles(id), and if this trigger
-  // didn't fire on signup, the insert below fails RLS/FK either way.
+  // startups.owner_id references profiles(id).
   const { data: profile } = await supabase
     .from("profiles")
     .select("id")
@@ -70,12 +75,13 @@ export async function createStartup(input: {
     .maybeSingle()
 
   if (!profile) {
-    const { error: profileErr } = await supabaseAdmin
+    const fullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "Founder"
+    const { error: profileErr } = await getSupabaseAdmin()
       .from("profiles")
-      .insert({ id: user.id, full_name: user.user_metadata?.full_name || "Founder" })
+      .insert({ id: user.id, full_name: fullName.slice(0, 120) })
     if (profileErr) {
       console.error("[createStartup] profile backfill failed:", profileErr.message)
-      return { startup: null, error: `Profile setup failed: ${profileErr.message}` }
+      return { startup: null, error: "We could not set up your profile. Please try again." }
     }
   }
 
@@ -83,6 +89,7 @@ export async function createStartup(input: {
   const slug = `${base}-${crypto.randomUUID().slice(0, 8)}`
 
   const payload: StartupInsert = {
+    // Always the caller — never taken from input.
     owner_id: user.id,
     name: input.name,
     slug,
@@ -95,43 +102,23 @@ export async function createStartup(input: {
     budget_currency: (input.budget_currency ?? "USD").toUpperCase(),
   }
 
-  // Try insert with admin client first (bypasses RLS timing check during .select() return)
-  try {
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const { data: adminData, error: adminErr } = await supabaseAdmin
-        .from("startups")
-        .insert(payload)
-        .select()
-        .single()
-      if (!adminErr && adminData) {
-        return { startup: adminData, error: null }
-      }
-    }
-  } catch (e) {
-    // Service role key not set or admin insert error — fallback to session client below
-  }
-
+  // Preferred path: the user's own session, checked by row-level security.
   const { data, error } = await supabase.from("startups").insert(payload).select().single()
+  if (!error && data) return { startup: data, error: null }
 
-  if (error) {
-    console.error("[createStartup]", error.message)
-    return { startup: null, error: error.message }
+  // Fallback for databases that have not yet applied the migration letting an
+  // owner read their startup in the same statement that creates it. Safe:
+  // owner_id above is forced to the authenticated user.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const { data: adminData, error: adminErr } = await getSupabaseAdmin()
+      .from("startups")
+      .insert(payload)
+      .select()
+      .single()
+    if (!adminErr && adminData) return { startup: adminData, error: null }
+    if (adminErr) console.error("[createStartup] admin fallback:", adminErr.message)
   }
-  return { startup: data, error: null }
-}
 
-export async function completeOnboarding(startupId: string) {
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase
-    .from("startups")
-    .update({ onboarding_status: "completed", onboarding_completed_at: new Date().toISOString() })
-    .eq("id", startupId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("[completeOnboarding]", error.message)
-    return null
-  }
-  return data
+  if (error) console.error("[createStartup]", error.message)
+  return { startup: null, error: "We could not create your startup. Please try again." }
 }

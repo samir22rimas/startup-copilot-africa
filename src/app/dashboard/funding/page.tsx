@@ -15,7 +15,7 @@ export default async function FundingPage() {
     ? data.project.metadata 
     : {}
 
-  const workspace = (metadata as Record<string, any>).funding_workspace as FundingWorkspaceData | undefined
+  const workspace = (metadata as Record<string, unknown>).funding_workspace as FundingWorkspaceData | undefined
 
   return (
     <FundingWorkspace 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { PLAN_LIMITS, PLAN_TIERS } from "@/src/lib/plans"
 import { AdminUserListItem, UserPlanTier, updateUserPlanTierAction } from "@/src/app/actions/admin"
 import { Search, Filter, Check, Loader2, Building2, MessageSquare, Download, Users } from "lucide-react"
 
@@ -107,9 +108,8 @@ export function UserManagementTable({ initialUsers }: { initialUsers: AdminUserL
             >
               <option value="all">All Tiers</option>
               <option value="free">Free Tier</option>
-              <option value="starter">Starter</option>
               <option value="pro">Pro</option>
-              <option value="enterprise">Enterprise</option>
+              <option value="team">Team</option>
             </select>
           </div>
 
@@ -179,12 +179,10 @@ export function UserManagementTable({ initialUsers }: { initialUsers: AdminUserL
                     <td className="py-4 px-5">
                       <span
                         className={`inline-block px-3 py-1 text-[11px] font-bold rounded-full border ${
-                          user.tier === "Enterprise"
+                          user.tier === "Team"
                             ? "bg-purple-500/10 text-purple-600 border-purple-500/30"
                             : user.tier === "Pro"
                             ? "bg-green-500/10 text-green-600 border-green-500/30"
-                            : user.tier === "Starter"
-                            ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
                             : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
                         }`}
                       >
@@ -245,7 +243,7 @@ export function UserManagementTable({ initialUsers }: { initialUsers: AdminUserL
             </div>
 
             <div className="space-y-2.5">
-              {(["Free", "Starter", "Pro", "Enterprise"] as UserPlanTier[]).map((tier) => (
+              {PLAN_TIERS.map((tier) => (
                 <button
                   key={tier}
                   onClick={() => handlePlanChange(selectedUser.id, tier)}
@@ -262,7 +260,7 @@ export function UserManagementTable({ initialUsers }: { initialUsers: AdminUserL
                     <span>{tier} Tier</span>
                   </div>
                   <span className="text-zinc-500 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
-                    {tier === "Free" ? "$0" : tier === "Starter" ? "$19/mo" : tier === "Pro" ? "$49/mo" : "$199/mo"}
+                    {PLAN_LIMITS[tier].monthlyPriceUsd === 0 ? "$0" : `${PLAN_LIMITS[tier].monthlyPriceUsd}/mo list`}
                   </span>
                 </button>
               ))}

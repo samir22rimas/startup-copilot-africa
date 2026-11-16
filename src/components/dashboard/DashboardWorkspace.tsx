@@ -1,20 +1,19 @@
 "use client"
 
 import type { DashboardDocument, DashboardQuickAction, DashboardRecommendation } from "@/src/app/actions/dashboard"
-import { addDashboardTask, sendStatefulCopilotMessage, toggleDashboardTask } from "@/src/app/actions/dashboard"
+import { sendStatefulCopilotMessage } from "@/src/app/actions/dashboard"
+import type { DashboardOverview, DashboardTask, TaskAssignee } from "@/src/app/actions/dashboard"
+import { MilestoneList } from "@/src/components/dashboard/MilestoneList"
+import type { Database } from "@/src/lib/database.types"
 import { WeeklyFocusCard } from "@/src/components/dashboard/WeeklyFocusCard"
 import { CopilotMarkdown } from "@/src/components/dashboard/CopilotMarkdown"
 import {
   ArrowRight,
-  Check,
-  ChevronRight,
   CircleDollarSign,
-  ClipboardCheck,
   FileText,
   Lightbulb,
   Loader2,
   MessageSquareText,
-  Plus,
   Send,
   Sparkles,
   Target,
@@ -24,12 +23,10 @@ import {
 import Link from "next/link"
 import * as React from "react"
 
-interface Task {
-  id: string
-  title: string
-  tag: string
-  done: boolean
-}
+type StartupRow = Database["public"]["Tables"]["startups"]["Row"]
+type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
+
+type Task = DashboardTask
 
 interface Message {
   id: string
@@ -41,21 +38,22 @@ export function DashboardWorkspace({
   startup,
   project,
   initialTasks,
+  teamMembers,
+  currentUserId,
   conversationId,
   initialMessages,
   overview,
 }: {
-  startup: any
-  project: any
+  startup: StartupRow
+  project: ProjectRow
   initialTasks: Task[]
+  teamMembers: TaskAssignee[]
+  currentUserId: string
   conversationId: string
   initialMessages: Message[]
-  overview: any
+  overview: DashboardOverview
 }) {
   const [tasks, setTasks] = React.useState<Task[]>(initialTasks)
-  const [newTaskTitle, setNewTaskTitle] = React.useState("")
-  const [newTaskTag, setNewTaskTag] = React.useState("Custom")
-  const [showAddTask, setShowAddTask] = React.useState(false)
 
   const [copilotMessages, setCopilotMessages] = React.useState<Message[]>(initialMessages)
   const [question, setQuestion] = React.useState("")
@@ -94,13 +92,17 @@ export function DashboardWorkspace({
     scroller.scrollTo({ top, behavior: "smooth" })
   }
 
-  React.useEffect(() => {
+  // Adopt fresh server data when the page re-renders (e.g. after switching project).
+  const [syncedTasks, setSyncedTasks] = React.useState(initialTasks)
+  if (syncedTasks !== initialTasks) {
+    setSyncedTasks(initialTasks)
     setTasks(initialTasks)
-  }, [initialTasks])
-
-  React.useEffect(() => {
+  }
+  const [syncedMessages, setSyncedMessages] = React.useState(initialMessages)
+  if (syncedMessages !== initialMessages) {
+    setSyncedMessages(initialMessages)
     setCopilotMessages(initialMessages)
-  }, [initialMessages])
+  }
 
   // Auto-scroll to bottom whenever messages change, unless user has scrolled up
   React.useEffect(() => {
@@ -124,25 +126,6 @@ export function DashboardWorkspace({
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`
   }
 
-  async function handleToggle(taskId: string, currentStatus: boolean) {
-    setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, done: !currentStatus } : t)))
-    await toggleDashboardTask(project.id, taskId, !currentStatus)
-    // Skip router.refresh() — optimistic UI is enough; refresh was resetting scroll
-  }
-
-  async function handleAddTask(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newTaskTitle.trim()) return
-
-    const tempId = `task-${Date.now()}`
-    const newTask: Task = { id: tempId, title: newTaskTitle.trim(), tag: newTaskTag, done: false }
-    setTasks((current) => [...current, newTask])
-    setNewTaskTitle("")
-    setShowAddTask(false)
-
-    await addDashboardTask(project.id, newTask.title, newTask.tag)
-  }
-
   async function handleAskCopilot(e: React.FormEvent) {
     e.preventDefault()
     const prompt = question.trim()
@@ -161,18 +144,20 @@ export function DashboardWorkspace({
     if (chatInputRef.current) chatInputRef.current.style.height = "auto"
     setCopilotLoading(true)
 
-    try {
-      const reply = await sendStatefulCopilotMessage(project.id, conversationId, prompt)
+    const pushAssistant = (content: string) =>
       setCopilotMessages((prev) => [
         ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: reply,
-        },
+        { id: `assistant-${Date.now()}`, role: "assistant", content },
       ])
+
+    try {
+      const res = await sendStatefulCopilotMessage(project.id, conversationId, prompt)
+      // Failures (rate limit, monthly allowance, provider outage) are shown in
+      // the thread instead of leaving the question silently unanswered.
+      pushAssistant(res.success ? res.reply : `**Copilot could not reply.** ${res.error}`)
     } catch (err) {
       console.error("Copilot error:", err)
+      pushAssistant("**Copilot could not reply.** Something went wrong — please try again.")
     } finally {
       setCopilotLoading(false)
     }
@@ -291,84 +276,13 @@ export function DashboardWorkspace({
 
       {/* Action Items List */}
       <section className="grid gap-4 sm:gap-6 lg:grid-cols-12">
-        <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-8 space-y-4 sm:space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-800">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="size-5 text-green-700" />
-              <h2 className="font-bold text-zinc-900 dark:text-white text-base">Active Launch Milestones</h2>
-            </div>
-            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-950/50 dark:text-green-300 w-fit">
-              {completed} of {tasks.length} completed
-            </span>
-          </div>
-
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {tasks.map((task) => (
-              <button
-                key={task.id}
-                type="button"
-                onClick={() => handleToggle(task.id, task.done)}
-                className="flex w-full cursor-pointer items-start gap-4 py-3.5 text-left first:pt-0 group"
-              >
-                <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-white transition ${
-                  task.done 
-                    ? "border-green-600 bg-green-600" 
-                    : "border-zinc-300 dark:border-zinc-700 group-hover:border-green-600"
-                }`}>
-                  <Check className={`size-3.5 transition-transform ${task.done ? "scale-100" : "scale-0"}`} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className={`block text-sm font-semibold transition ${task.done ? "text-zinc-400 line-through" : "text-zinc-800 dark:text-zinc-100 group-hover:text-green-700 dark:group-hover:text-green-400"}`}>
-                    {task.title}
-                  </span>
-                  <span className="mt-1 inline-block rounded bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800">
-                    {task.tag}
-                  </span>
-                </div>
-                <ChevronRight className="size-4 text-zinc-300 transition-transform group-hover:translate-x-1 shrink-0 mt-1" />
-              </button>
-            ))}
-          </div>
-
-          {!showAddTask ? (
-            <button
-              onClick={() => setShowAddTask(true)}
-              className="inline-flex items-center gap-2 text-xs font-bold text-green-700 transition hover:text-green-800 cursor-pointer"
-            >
-              <Plus className="size-4" /> Add custom milestone
-            </button>
-          ) : (
-            <form onSubmit={handleAddTask} className="flex flex-col gap-3 sm:flex-row">
-              <input
-                type="text"
-                required
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Milestone description..."
-                className="h-10 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
-              />
-              <select
-                value={newTaskTag}
-                onChange={(e) => setNewTaskTag(e.target.value)}
-                className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-xs outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
-              >
-                <option value="Research">Research</option>
-                <option value="Strategy">Strategy</option>
-                <option value="Planning">Planning</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="Custom">Custom</option>
-              </select>
-              <div className="flex gap-2">
-                <button type="submit" className="h-10 rounded-xl bg-green-700 px-4 text-xs font-semibold text-white hover:bg-green-800 transition cursor-pointer">
-                  Save
-                </button>
-                <button type="button" onClick={() => setShowAddTask(false)} className="h-10 rounded-xl border border-zinc-200 px-4 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+        <MilestoneList
+          projectId={project.id}
+          tasks={tasks}
+          onTasksChange={setTasks}
+          members={teamMembers}
+          currentUserId={currentUserId}
+        />
 
         {/* Right Sidebar Info */}
         <aside className="lg:col-span-4 space-y-4">
@@ -584,6 +498,7 @@ export function DashboardWorkspace({
               }
             }}
             placeholder="Ask your copilot..."
+            maxLength={4000}
             className="min-h-11 max-h-40 min-w-0 flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm leading-6 outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
           />
           <button

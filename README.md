@@ -164,16 +164,17 @@ Install dependencies.
 npm install
 ```
 
-Create a `.env.local` file.
+Create a `.env.local` file from the template and fill it in.
 
-```env
-OPENAI_API_KEY=
+```bash
+cp .env.example .env.local
+```
 
-NEXT_PUBLIC_SUPABASE_URL=
+Apply the database schema to your Supabase project (see `supabase/README.md`).
 
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-
-SUPABASE_SERVICE_ROLE_KEY=
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
 ```
 
 Run the development server.
@@ -192,12 +193,50 @@ http://localhost:3000
 
 # Environment Variables
 
-| Variable                      | Description                                 |
-| ----------------------------- | ------------------------------------------- |
-| OPENAI_API_KEY                | OpenAI API key                              |
-| NEXT_PUBLIC_SUPABASE_URL      | Supabase project URL                        |
-| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase public anonymous key               |
-| SUPABASE_SERVICE_ROLE_KEY     | Server-side Supabase access (if applicable) |
+| Variable                             | Description                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| NEXT_PUBLIC_SUPABASE_URL             | Supabase project URL                                                        |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | Supabase public (publishable / anon) key                                    |
+| SUPABASE_SERVICE_ROLE_KEY            | Server-only Supabase key. Bypasses row-level security — never expose it     |
+| NEXT_PUBLIC_SITE_URL                 | Public origin of the app, used in auth emails and invitation links          |
+| ADMIN_EMAILS                         | Comma-separated emails allowed into `/admin`. Server-only                   |
+| GEMINI_API_KEY                       | Primary AI provider                                                         |
+| GROQ_API_KEY / DEEPSEEK_API_KEY / OPENAI_API_KEY | Optional fallback providers, tried in that order                |
+
+---
+
+# Team Collaboration
+
+Founders rarely build alone. From **Dashboard → Team** the owner can:
+
+- **Invite co-founders, team members and advisors** by email. Each invitation is a private link (copy it, or share by WhatsApp or email) that only the person signed in with the invited, verified email address can accept.
+- **Manage roles** — Owner, Co-founder (admin), Team member, Advisor — and remove people.
+- **Chat with the team in real time**, in a General channel and one channel per project.
+- **Bring the AI Copilot into the conversation** by starting a message with `@copilot`; its answer is posted for the whole team.
+
+Everyone on the team shares the same workspace: plans, documents, marketing, analytics, funding and legal.
+
+---
+
+# Security
+
+- **Row-level security on every table.** Access to a startup's data comes only from team membership, enforced in Postgres — not just in application code.
+- **No privilege escalation.** Membership can only be gained by accepting an invitation; ownership cannot be transferred or taken through the API; co-founder admins cannot promote themselves or remove the owner.
+- **Server-controlled plans.** The plan tier lives in Supabase `app_metadata` (writable only with the service role) and every AI call is checked against a per-minute limit and the plan's monthly allowance.
+- **Hardened HTTP headers.** Content-Security-Policy, HSTS, `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy and a locked-down permissions policy on every response.
+- **Validated input everywhere.** Server actions validate ids, lengths and formats; uploads are verified by file signature, not by name or browser-reported type; redirects after sign-in only go to known in-app paths.
+- **Admin portal** restricted to verified emails in the server-only `ADMIN_EMAILS` variable.
+
+---
+
+# Deployment Checklist
+
+1. Create a **separate Supabase project for production** and run `supabase db push`.
+2. In Supabase → Authentication: keep **Confirm email** enabled, set the **Site URL** to your domain, and add `https://<your-domain>/auth/callback**` to the redirect URLs.
+3. In Supabase → Database → Replication, confirm `team_messages` is in the `supabase_realtime` publication (the migration adds it) so team chat updates live.
+4. Set every variable from `.env.example` in your host (Vercel → Settings → Environment Variables), including `ADMIN_EMAILS` and `NEXT_PUBLIC_SITE_URL`.
+5. Set spending limits in each AI provider's dashboard.
+6. Deploy, then sign up, create a startup, invite a second account and exchange a message in Team chat.
 
 ---
 

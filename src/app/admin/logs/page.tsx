@@ -1,5 +1,5 @@
 import { getAdminUsageLogs } from "@/src/app/actions/admin"
-import { Activity, Clock, Terminal, User } from "lucide-react"
+import { Activity } from "lucide-react"
 
 export default async function AdminLogsPage() {
   const res = await getAdminUsageLogs()
@@ -22,7 +22,7 @@ export default async function AdminLogsPage() {
           <Activity className="w-7 h-7 text-emerald-600" /> Platform Usage & System Logs
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Audit trail of usage events, AI token consumption, and system activity logs.
+          The 100 most recent usage events (rate-limit and quota bookkeeping). Token consumption is under AI Usage.
         </p>
       </div>
 

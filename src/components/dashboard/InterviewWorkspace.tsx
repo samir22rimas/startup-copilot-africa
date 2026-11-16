@@ -186,7 +186,7 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
               Interview Complete!
             </h3>
             <p className="mt-1 text-sm text-zinc-500">
-              Your custom dashboard and business briefs are ready.
+              Your workspace is ready. Anza is preparing your entrepreneurial profile and recommended next steps.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -194,6 +194,12 @@ export function InterviewWorkspace({ projectId }: { projectId: string }) {
             >
               Go to Dashboard <ArrowRight className="size-4" />
             </button>
+            <a
+              href="/dashboard/profile"
+              className="mt-3 block text-sm font-semibold text-green-700 underline-offset-4 hover:underline dark:text-green-400"
+            >
+              View my entrepreneurial profile
+            </a>
           </div>
         )}
       </div>

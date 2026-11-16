@@ -12,6 +12,7 @@ export async function writeActiveStartupCookie(startupId: string) {
   const store = await cookies()
   store.set(ACTIVE_STARTUP_COOKIE, startupId, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,

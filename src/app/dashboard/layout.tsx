@@ -1,78 +1,69 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
-import { Sidebar } from "@/src/components/dashboard/Sidebar"
+import { Sidebar, type SidebarProps } from "@/src/components/dashboard/Sidebar"
 import { TopNav } from "@/src/components/dashboard/TopNav"
 import { DashboardScrollLock } from "@/src/components/dashboard/DashboardScrollLock"
 import { SidebarSkeleton } from "@/src/components/skeletons/SidebarSkeleton"
 import { TopNavSkeleton } from "@/src/components/skeletons/TopNavSkeleton"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
-import { getMyStartup, getAllMyStartups } from "@/src/features/business/services/startup.service"
-import { getProjects } from "@/src/features/business/services/project.service"
+import { getAllMyStartups } from "@/src/features/business/services/startup.service"
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
-import { readActiveProjectCookie, resolveActiveProject } from "@/src/lib/active-project"
+import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
 import { FeedbackModal } from "@/src/components/shared/FeedbackModal"
-import { isUserAdminEmail } from "@/src/lib/admin-guard"
+import { isPlatformAdmin } from "@/src/lib/admin-guard"
+import { getPlanLimits, getPlanTier } from "@/src/lib/plans"
+import { getMonthlyAiUsage } from "@/src/lib/rate-limiter"
 
-async function DashboardTopNav() {
+async function loadShell(): Promise<{
+  sidebar: SidebarProps
+  user: { avatarUrl?: string; initial: string; name: string; email?: string }
+  plan: { tier: string; used: number; limit: number }
+}> {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect("/sign-in")
 
-  const profile = await getCurrentProfile()
-  const userDisplayName =
-    profile?.full_name || user.user_metadata?.full_name || user.email || "User"
-  const userInitial = (userDisplayName[0] || "U").toUpperCase()
+  const [profile, startups, preferredId, used] = await Promise.all([
+    getCurrentProfile(),
+    getAllMyStartups(),
+    readActiveStartupCookie(),
+    getMonthlyAiUsage(user.id),
+  ])
+  const active = startups.length ? resolveActiveStartup(startups, preferredId) : null
+  const name = profile?.full_name || user.user_metadata?.full_name || user.email || "User"
+  const tier = getPlanTier(user)
 
-  return (
-    <TopNav
-      user={{
-        avatarUrl: profile?.avatar_url || undefined,
-        initial: userInitial,
-        name: userDisplayName,
-      }}
-    />
-  )
+  return {
+    sidebar: {
+      startups: startups.map((s) => ({ id: s.id, name: s.name })),
+      activeStartupId: active?.id ?? null,
+      stage: active?.stage ?? null,
+      isAdmin: isPlatformAdmin(user),
+    },
+    user: {
+      avatarUrl: profile?.avatar_url || undefined,
+      initial: (String(name)[0] || "U").toUpperCase(),
+      name: String(name),
+      email: user.email ?? undefined,
+    },
+    plan: { tier, used, limit: getPlanLimits(tier).monthlyAiGenerations },
+  }
+}
+
+async function DashboardTopNav() {
+  const shell = await loadShell()
+  return <TopNav user={shell.user} plan={shell.plan} sidebar={shell.sidebar} />
 }
 
 async function DashboardSidebar() {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect("/sign-in")
-
-  const startup = await getMyStartup()
-  const startups = await getAllMyStartups()
-  const projects = startup ? await getProjects(startup.id) : []
-  const preferredId = await readActiveProjectCookie()
-  const activeProjectId =
-    projects.length > 0 ? resolveActiveProject(projects, preferredId).id : null
-
-  return (
-    <Sidebar
-      activeProjectId={activeProjectId}
-      activeStartupId={startup?.id}
-      isAdmin={isUserAdminEmail(user.email)}
-      projects={projects.map((project) => ({
-        id: project.id,
-        title: project.title,
-      }))}
-      startups={startups.map((s) => ({
-        id: s.id,
-        name: s.name,
-      }))}
-    />
-  )
+  const shell = await loadShell()
+  return <Sidebar {...shell.sidebar} />
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background font-sans">
       <DashboardScrollLock />
@@ -80,12 +71,12 @@ export default function DashboardLayout({
         <DashboardTopNav />
       </Suspense>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <Suspense fallback={<SidebarSkeleton />}>
           <DashboardSidebar />
         </Suspense>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/40 p-3 sm:p-5 md:p-8">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/30 px-4 py-5 sm:px-6 sm:py-7 lg:px-10">
           {children}
         </main>
       </div>

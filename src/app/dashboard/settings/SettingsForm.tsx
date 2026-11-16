@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { User, Building2, Save, Loader2, Check } from "lucide-react"
-import { updateStartupSettings, updateUserSettings } from "@/src/app/actions/settings"
+import { User, Building2, Save, Loader2, Check, Gauge } from "lucide-react"
+import { updateStartupSettings, updateUserSettings, type PlanUsage } from "@/src/app/actions/settings"
 import type { StartupStage } from "@/src/lib/database.types"
 import {
   AFRICAN_COUNTRIES,
@@ -42,9 +42,12 @@ interface SettingsFormProps {
     description: string
     websiteUrl: string
   } | null
+  /** False for team members who are not the owner or a co-founder admin. */
+  canEditStartup?: boolean
+  planUsage?: PlanUsage | null
 }
 
-export function SettingsForm({ user, startup }: SettingsFormProps) {
+export function SettingsForm({ user, startup, canEditStartup = true, planUsage = null }: SettingsFormProps) {
   const router = useRouter()
   const [fullName, setFullName] = React.useState(user.fullName)
   const [phone, setPhone] = React.useState(user.phone)
@@ -78,16 +81,44 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image must be smaller than 2MB")
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      setError("Choose a JPG, PNG, WebP or GIF image.")
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Image must be smaller than 8MB")
       return
     }
 
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setAvatarUrl(reader.result as string)
+    // Shrink to a 256px square JPEG in the browser: the stored avatar stays a
+    // few kilobytes instead of megabytes loaded on every page.
+    const objectUrl = URL.createObjectURL(file)
+    const image = new window.Image()
+    image.onload = () => {
+      const size = 256
+      const canvas = document.createElement("canvas")
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext("2d")
+      if (ctx) {
+        const side = Math.min(image.naturalWidth, image.naturalHeight)
+        const sx = (image.naturalWidth - side) / 2
+        const sy = (image.naturalHeight - side) / 2
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, size, size)
+        ctx.drawImage(image, sx, sy, side, side, 0, 0, size, size)
+        setAvatarUrl(canvas.toDataURL("image/jpeg", 0.85))
+        setError("")
+      } else {
+        setError("That image could not be processed. Try another one.")
+      }
+      URL.revokeObjectURL(objectUrl)
     }
-    reader.readAsDataURL(file)
+    image.onerror = () => {
+      setError("That image could not be read. Try another one.")
+      URL.revokeObjectURL(objectUrl)
+    }
+    image.src = objectUrl
   }
 
   async function handleProfileSubmit(e: React.FormEvent) {
@@ -140,6 +171,8 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
 
   return (
     <div className="space-y-8">
+      {planUsage && <PlanUsageCard usage={planUsage} />}
+
       <form
         onSubmit={handleProfileSubmit}
         className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8"
@@ -179,7 +212,7 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
             <input
               type="file"
               ref={fileInputRef}
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
               onChange={handleImageUpload}
             />
@@ -190,7 +223,7 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
             >
               Upload Photo
             </button>
-            <p className="mt-1 text-[11px] text-zinc-400">JPG, PNG or GIF. Max size 2MB.</p>
+            <p className="mt-1 text-[11px] text-zinc-400">JPG, PNG, WebP or GIF. Resized automatically.</p>
           </div>
         </div>
 
@@ -344,12 +377,80 @@ export function SettingsForm({ user, startup }: SettingsFormProps) {
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
-            <SaveButton saving={savingStartup} label="Save Startup" />
-          </div>
+          {canEditStartup ? (
+            <div className="mt-6 flex justify-end">
+              <SaveButton saving={savingStartup} label="Save Startup" />
+            </div>
+          ) : (
+            <p className="mt-6 rounded-xl bg-zinc-50 p-4 text-xs text-zinc-500 dark:bg-zinc-950/50">
+              Only the owner and co-founder admins can change startup details.
+            </p>
+          )}
         </form>
       )}
     </div>
+  )
+}
+
+function PlanUsageCard({ usage }: { usage: PlanUsage }) {
+  const percent = usage.aiLimit > 0 ? Math.min(100, Math.round((usage.aiUsed / usage.aiLimit) * 100)) : 0
+  const resets = new Date(usage.resetsAt).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  })
+  const nearLimit = percent >= 85
+
+  return (
+    <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+      <div className="flex items-center gap-3 border-b border-zinc-100 pb-5 dark:border-zinc-800">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/50">
+          <Gauge className="size-5" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-zinc-900 dark:text-white">Plan &amp; usage</h2>
+          <p className="text-xs text-zinc-500">
+            You are on the <span className="font-semibold text-zinc-700 dark:text-zinc-300">{usage.tier}</span> plan.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">AI generations this month</p>
+          <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
+            {usage.aiUsed.toLocaleString()} / {usage.aiLimit.toLocaleString()}
+          </p>
+        </div>
+        <div
+          className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={usage.aiLimit}
+          aria-valuenow={Math.min(usage.aiUsed, usage.aiLimit)}
+          aria-label="AI generations used this month"
+        >
+          <div
+            className={nearLimit ? "h-full rounded-full bg-amber-500" : "h-full rounded-full bg-green-600"}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Counts Copilot replies and generated documents. Resets on {resets}.
+        </p>
+      </div>
+
+      <dl className="mt-6 grid grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950/50">
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Team seats per startup</dt>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.teamSeats}</dd>
+        </div>
+        <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950/50">
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Businesses you can own</dt>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.startupLimit}</dd>
+        </div>
+      </dl>
+    </section>
   )
 }
 

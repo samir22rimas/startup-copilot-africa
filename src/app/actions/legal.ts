@@ -1,11 +1,9 @@
 "use server";
 
+import { getProjectAccess } from "@/src/lib/workspace-access";
 import { getAfricanCountryName } from "@/src/lib/african-countries";
 import { Json } from "@/src/lib/database.types";
-import {
-  AI_RATE_LIMIT_MESSAGE,
-  checkAiRateLimit,
-} from "@/src/lib/rate-limiter";
+import { checkAiRateLimit } from "@/src/lib/rate-limiter";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -255,37 +253,9 @@ export async function generateLegalComplianceWorkspace(
   | { success: true; workspace: LegalWorkspace }
   | { success: false; error: string }
 > {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !projectId) {
-    return {
-      success: false,
-      error: "Please sign in to view legal permissions.",
-    };
-  }
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("id, name, city, country_code, industry, description")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (!startup) {
-    return { success: false, error: "Your startup could not be found." };
-  }
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, title, description, target_audience, metadata")
-    .eq("id", projectId)
-    .eq("startup_id", startup.id)
-    .maybeSingle();
-
-  if (!project) {
-    return { success: false, error: "This project is not available to you." };
-  }
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return { success: false, error: access.error };
+  const { supabase, user, startup, project } = access;
 
   // Check if legal workspace is already saved in project metadata
   const metadata = (project.metadata as Record<string, Json> | null) || {};
@@ -303,7 +273,7 @@ export async function generateLegalComplianceWorkspace(
 
   const rateLimit = await checkAiRateLimit(user.id);
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE };
+    return { success: false, error: rateLimit.message };
   }
 
   const systemPrompt = `You are a Senior Corporate Lawyer and Regulatory Compliance Specialist with deep expertise in African business law, startup incorporation, licensing, and tax compliance. Your advice must be practical, country-specific, and actionable for a first-time founder.

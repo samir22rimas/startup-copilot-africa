@@ -1,9 +1,10 @@
 "use server"
 
+import { getProjectAccess } from "@/src/lib/workspace-access"
+import { isStorableObject } from "@/src/lib/validation"
 import { revalidatePath } from "next/cache"
-import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { generateTextWithFallback } from "@/src/lib/ai-providers"
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter"
+import { checkAiRateLimit } from "@/src/lib/rate-limiter"
 import type { Json } from "@/src/lib/database.types"
 
 export type PitchDeckSlide = {
@@ -74,18 +75,13 @@ function parseDeck(response: string): PitchDeckSlide[] | null {
 }
 
 export async function generatePitchDeck(projectId: string): Promise<{ success: true; deck: PitchDeck } | { success: false; error: string }> {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || !projectId) return { success: false, error: "Please sign in to generate a pitch deck." }
-
-  const { data: startup } = await supabase.from("startups").select("id, name, city, country_code, budget_currency").eq("owner_id", user.id).maybeSingle()
-  if (!startup) return { success: false, error: "Your startup could not be found." }
-  const { data: project } = await supabase.from("projects").select("id, title, description, target_audience, metadata").eq("id", projectId).eq("startup_id", startup.id).maybeSingle()
-  if (!project) return { success: false, error: "This project is not available to you." }
+  const access = await getProjectAccess(projectId)
+  if ("error" in access) return { success: false, error: access.error }
+  const { supabase, user, startup, project } = access
 
   const rateLimit = await checkAiRateLimit(user.id)
   if (!rateLimit.allowed) {
-    return { success: false, error: AI_RATE_LIMIT_MESSAGE }
+    return { success: false, error: rateLimit.message }
   }
 
   const context = { startup: startup.name, title: project.title, description: project.description || "", audience: project.target_audience || "", location: [startup.city, startup.country_code].filter(Boolean).join(", ") || "your launch market", currency: startup.budget_currency || "USD" }
@@ -139,13 +135,10 @@ State the funding amount sought in ${context.currency}. Break down the use of fu
 }
 
 export async function savePitchDeck(projectId: string, deck: PitchDeck): Promise<{ success: true } | { success: false; error: string }> {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || !projectId) return { success: false, error: "Please sign in to save changes." }
-  const { data: startup } = await supabase.from("startups").select("id").eq("owner_id", user.id).maybeSingle()
-  if (!startup) return { success: false, error: "Your startup could not be found." }
-  const { data: project } = await supabase.from("projects").select("id, metadata").eq("id", projectId).eq("startup_id", startup.id).maybeSingle()
-  if (!project) return { success: false, error: "This project is not available to you." }
+  if (!isStorableObject(deck)) return { success: false, error: "That is too much content to save. Shorten it and try again." }
+  const access = await getProjectAccess(projectId)
+  if ("error" in access) return { success: false, error: access.error }
+  const { supabase, project } = access
   const metadata = project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata) ? project.metadata : {}
   const { error } = await supabase.from("projects").update({ metadata: { ...metadata, pitch_deck: deck as unknown as Json } }).eq("id", project.id)
   if (error) return { success: false, error: "Could not save the pitch deck. Please try again." }

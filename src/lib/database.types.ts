@@ -1,4 +1,4 @@
-export type MemberRole = "owner" | "admin" | "member" | "advisor";
+export type MemberRole = "owner" | "admin" | "member" | "advisor" | "viewer";
 export type StartupStage =
   | "idea"
   | "validation"
@@ -11,6 +11,7 @@ export type ProjectStatus = "draft" | "active" | "paused" | "archived";
 export type MessageRole = "user" | "assistant" | "system";
 export type DocumentStatus = "pending" | "processing" | "ready" | "failed";
 export type InsightStatus = "queued" | "processing" | "completed" | "failed";
+export type InvitationStatus = "pending" | "accepted" | "declined";
 
 export type Json =
   | string
@@ -20,6 +21,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 type Timestamps = { created_at: string; updated_at: string };
+
+import type { V2Tables } from "./database.v2.types";
 
 export interface Database {
   public: {
@@ -34,6 +37,10 @@ export interface Database {
           city: string | null;
           timezone: string;
           last_active_at: string | null;
+          preferred_language: "en" | "fr";
+          experience_level: string | null;
+          entrepreneur_profile: Json;
+          onboarded_at: string | null;
         };
         Insert: Partial<
           Omit<
@@ -65,6 +72,8 @@ export interface Database {
           description: string | null;
           onboarding_status: OnboardingStatus;
           onboarding_completed_at: string | null;
+          objectives: Json;
+          business_profile: Json;
         };
         Insert: Omit<
           Database["public"]["Tables"]["startups"]["Row"],
@@ -75,6 +84,8 @@ export interface Database {
           | "budget_currency"
           | "onboarding_status"
           | "onboarding_completed_at"
+          | "objectives"
+          | "business_profile"
         > &
           Partial<
             Pick<
@@ -84,6 +95,8 @@ export interface Database {
               | "budget_currency"
               | "onboarding_status"
               | "onboarding_completed_at"
+              | "objectives"
+              | "business_profile"
             >
           >;
         Update: Partial<
@@ -196,6 +209,7 @@ export interface Database {
           status: DocumentStatus;
           extracted_text: string | null;
           metadata: Json;
+          folder: string | null;
         };
         Insert: Omit<
           Database["public"]["Tables"]["knowledge_documents"]["Row"],
@@ -208,6 +222,7 @@ export interface Database {
           | "status"
           | "extracted_text"
           | "metadata"
+          | "folder"
         > &
           Partial<
             Pick<
@@ -219,6 +234,7 @@ export interface Database {
               | "status"
               | "extracted_text"
               | "metadata"
+              | "folder"
             >
           >;
         Update: Partial<
@@ -237,6 +253,8 @@ export interface Database {
           created_by: string;
           title: string | null;
           archived_at: string | null;
+          kind: "copilot" | "interview";
+          mode: string;
         };
         Insert: Omit<
           Database["public"]["Tables"]["conversations"]["Row"],
@@ -246,11 +264,13 @@ export interface Database {
           | "project_id"
           | "title"
           | "archived_at"
+          | "kind"
+          | "mode"
         > &
           Partial<
             Pick<
               Database["public"]["Tables"]["conversations"]["Row"],
-              "id" | "project_id" | "title" | "archived_at"
+              "id" | "project_id" | "title" | "archived_at" | "kind" | "mode"
             >
           >;
         Update: Partial<
@@ -388,9 +408,114 @@ export interface Database {
         >;
         Relationships: [];
       };
-    };
+      startup_invitations: {
+        Row: {
+          id: string;
+          startup_id: string;
+          email: string;
+          role: MemberRole;
+          invited_by: string;
+          status: InvitationStatus;
+          message: string | null;
+          expires_at: string;
+          accepted_by: string | null;
+          responded_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          startup_id: string;
+          email: string;
+          role?: MemberRole;
+          invited_by: string;
+          status?: InvitationStatus;
+          message?: string | null;
+          expires_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      team_messages: {
+        Row: {
+          id: string;
+          startup_id: string;
+          project_id: string | null;
+          author_id: string | null;
+          content: string;
+          is_copilot: boolean;
+          edited_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          startup_id: string;
+          project_id?: string | null;
+          author_id: string | null;
+          content: string;
+          is_copilot?: boolean;
+        };
+        Update: { content: string };
+        Relationships: [];
+      };
+    } & V2Tables;
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_shared_artifact: {
+        Args: { share_token: string };
+        Returns: Array<{
+          title: string;
+          module: string;
+          kind: string;
+          content: Json;
+          startup_name: string;
+          updated_at: string;
+        }>;
+      };
+      get_invitation_preview: {
+        Args: { target_invitation_id: string };
+        Returns: Array<{
+          startup_name: string;
+          inviter_name: string;
+          role: MemberRole;
+          email_hint: string;
+          status: InvitationStatus;
+          is_expired: boolean;
+          is_for_current_user: boolean;
+        }>;
+      };
+      get_my_pending_invitations: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          startup_id: string;
+          startup_name: string;
+          inviter_name: string;
+          role: MemberRole;
+          message: string | null;
+          expires_at: string;
+          created_at: string;
+        }>;
+      };
+      accept_startup_invitation: {
+        Args: { target_invitation_id: string };
+        Returns: string;
+      };
+      decline_startup_invitation: {
+        Args: { target_invitation_id: string };
+        Returns: undefined;
+      };
+      get_startup_team: {
+        Args: { target_startup_id: string };
+        Returns: Array<{
+          user_id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          email: string;
+          role: MemberRole;
+          joined_at: string;
+        }>;
+      };
+    };
     Enums: {
       member_role: MemberRole;
       startup_stage: StartupStage;
@@ -399,6 +524,7 @@ export interface Database {
       message_role: MessageRole;
       document_status: DocumentStatus;
       insight_status: InsightStatus;
+      invitation_status: InvitationStatus;
     };
     CompositeTypes: Record<string, never>;
   };

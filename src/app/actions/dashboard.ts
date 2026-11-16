@@ -8,16 +8,69 @@ import {
   createStartup,
   getMyStartup,
 } from "@/src/features/business/services/startup.service";
-import { checkAiRateLimit, AI_RATE_LIMIT_MESSAGE } from "@/src/lib/rate-limiter";
-import { supabaseAdmin } from "@/src/lib/supabase/admin";
+import type { Database, Json } from "@/src/lib/database.types";
+import { getDocumentContextForStartup } from "@/src/lib/document-context";
+import { getPlanLimits, getPlanTier } from "@/src/lib/plans";
+import { checkAiRateLimit } from "@/src/lib/rate-limiter";
+import { getSupabaseAdmin } from "@/src/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { MAX_CHAT_MESSAGE_LENGTH, cleanText, isUuid } from "@/src/lib/validation";
+import { getProjectAccess, readProjectMetadata } from "@/src/lib/workspace-access";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { z } from "zod";
+
+type StartupRow = Database["public"]["Tables"]["startups"]["Row"];
+type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
+type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+type DocumentSummary = Pick<
+  Database["public"]["Tables"]["knowledge_documents"]["Row"],
+  "id" | "file_name" | "status" | "metadata" | "created_at"
+>;
+type InsightSummary = Pick<
+  Database["public"]["Tables"]["insights"]["Row"],
+  "id" | "title" | "kind" | "status" | "result" | "error_message" | "created_at"
+>;
+
+/** A non-empty string field of a JSON object, or null. */
+function jsonText(value: Json | null | undefined, key: string): string | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const field = value[key];
+    return typeof field === "string" && field ? field : null;
+  }
+  return null;
+}
+
+const MAX_TASKS = 200;
+const COPILOT_HISTORY_LIMIT = 30;
+
+const newStartupSchema = z.object({
+  name: z.string().trim().min(2, "Startup name must be at least 2 characters.").max(120),
+  countryCode: z.string().trim().regex(/^[A-Za-z]{2}$/, "Choose a country."),
+  city: z.string().trim().max(120).default(""),
+  industry: z.string().trim().max(120).default(""),
+  estimatedBudgetCents: z.number().min(0).max(1e15).default(0),
+  budgetCurrency: z.string().trim().regex(/^[A-Za-z]{3}$/).default("USD"),
+  projectTitle: z.string().trim().min(2, "Project title must be at least 2 characters.").max(160),
+  projectDescription: z.string().trim().max(4000).default(""),
+});
 
 export interface DashboardTask {
   id: string;
   title: string;
   tag: string;
   done: boolean;
+  /** Team member responsible for this milestone, if any. */
+  assigneeId?: string | null;
+  /** Due date as YYYY-MM-DD, if any. */
+  dueDate?: string | null;
+}
+
+/** A teammate a milestone can be assigned to. */
+export interface TaskAssignee {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
 }
 
 export interface DashboardRecommendation {
@@ -105,11 +158,11 @@ function getHealthLabel(score: number) {
 }
 
 function calculateHealthScore(
-  startup: any,
-  project: any,
+  startup: StartupRow,
+  project: ProjectRow,
   tasks: DashboardTask[],
-  documents: any[],
-  insights: any[],
+  documents: DocumentSummary[],
+  insights: InsightSummary[],
   tracked?: import("@/src/lib/data-truth").TrackedMetrics | null,
   weeklyFocus?: import("@/src/lib/focus-plan").WeeklyFocusPlan | null,
 ) {
@@ -144,8 +197,8 @@ function calculateHealthScore(
 }
 
 function buildFocusIndicators(
-  startup: any,
-  project: any,
+  startup: StartupRow,
+  project: ProjectRow,
   tasks: DashboardTask[],
   tracked?: import("@/src/lib/data-truth").TrackedMetrics | null,
 ): FocusIndicator[] {
@@ -158,9 +211,10 @@ function buildFocusIndicators(
   const taskProgress =
     tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
 
-  let runwayScore = startup?.estimated_budget_cents > 0 ? 40 : 10;
+  const hasBudget = (startup?.estimated_budget_cents ?? 0) > 0;
+  let runwayScore = hasBudget ? 40 : 10;
   let runwayFootnote =
-    startup?.estimated_budget_cents > 0
+    hasBudget
       ? "Based on budget set in your startup profile"
       : "No budget set yet — update Settings";
   let runwaySource: "derived" | "tracked" = "derived";
@@ -203,18 +257,18 @@ function buildFocusIndicators(
 }
 
 function buildRecommendations(
-  startup: any,
-  project: any,
+  startup: StartupRow,
+  project: ProjectRow,
   tasks: DashboardTask[],
-  documents: any[],
-  insights: any[],
+  documents: DocumentSummary[],
+  insights: InsightSummary[],
 ): DashboardRecommendation[] {
   if (insights.length > 0) {
     return insights.slice(0, 3).map((insight) => ({
       title: insight.title || insight.kind || "AI recommendation",
       detail:
-        insight.result?.summary ||
-        insight.result?.next_step ||
+        jsonText(insight.result, "summary") ||
+        jsonText(insight.result, "next_step") ||
         insight.error_message ||
         "Keep moving forward with this insight.",
     }));
@@ -254,9 +308,9 @@ function buildRecommendations(
 }
 
 function buildDocuments(
-  startup: any,
-  project: any,
-  documents: any[],
+  startup: StartupRow,
+  project: ProjectRow,
+  documents: DocumentSummary[],
 ): DashboardDocument[] {
   if (documents.length === 0) return [];
 
@@ -264,15 +318,13 @@ function buildDocuments(
     id: document.id,
     title: document.file_name || "Uploaded document",
     summary:
-      document.metadata?.summary ||
-      (document.extracted_text
-        ? String(document.extracted_text).slice(0, 120)
-        : `Tracked upload for ${startup?.name || project?.title || "your startup"}`),
+      jsonText(document.metadata, "summary") ||
+      `Tracked upload for ${startup?.name || project?.title || "your startup"}`,
     status: document.status || "ready",
   }));
 }
 
-function buildQuickActions(startup: any, project: any): DashboardQuickAction[] {
+function buildQuickActions(startup: StartupRow, project: ProjectRow): DashboardQuickAction[] {
   return [
     {
       label: "Upload knowledge documents",
@@ -293,11 +345,11 @@ function buildQuickActions(startup: any, project: any): DashboardQuickAction[] {
 }
 
 function buildMarketingOverview(
-  startup: any,
-  project: any,
+  startup: StartupRow,
+  project: ProjectRow,
   tasks: DashboardTask[],
-  documents: any[],
-  insights: any[],
+  documents: DocumentSummary[],
+  insights: InsightSummary[],
   scheduledEvents: MarketingEventItem[] = [],
 ): MarketingOverview {
   const completedTasks = tasks.filter((task) => task.done).length;
@@ -357,8 +409,8 @@ function buildMarketingOverview(
       strategyItems.push({
         title: insight.title || insight.kind || "Marketing insight",
         detail:
-          insight.result?.summary ||
-          insight.result?.next_step ||
+          jsonText(insight.result, "summary") ||
+          jsonText(insight.result, "next_step") ||
           insight.error_message ||
           "Keep the launch momentum moving.",
       });
@@ -441,7 +493,7 @@ async function generateInitialTasks(
     estimated_budget_cents: number | null;
     budget_currency: string | null;
   },
-  project: { title: string; description: string | null; metadata: any },
+  project: { title: string; description: string | null },
 ) {
   const systemPrompt = `You are a Startup Advisor for an African founder.
 Based on the startup details, generate exactly 4 actionable, highly specific tasks for their initial launch dashboard.
@@ -465,7 +517,7 @@ Description: ${project.description || "N/A"}`;
     tasks = [
       {
         id: "rate_limited",
-        title: AI_RATE_LIMIT_MESSAGE,
+        title: rateLimit.message,
         tag: "Setup",
         done: false,
       },
@@ -478,18 +530,23 @@ Description: ${project.description || "N/A"}`;
         temperature: 0.6,
       });
       const jsonMatch = response.match(/\[[\s\S]*\]/);
+      const parsed: unknown = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 
-      tasks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    } catch (error: any) {
-      console.error("Failed to generate initial tasks with AI", error);
-      tasks = [
-        {
-          id: "error",
-          title: `Failed to generate personalized tasks. Check your AI provider configuration. Error: ${error.message || "Unknown"}`,
-          tag: "Error",
+      // Never trust model output as-is: keep only well-formed tasks.
+      tasks = (Array.isArray(parsed) ? parsed : [])
+        .filter((t): t is Record<string, unknown> => Boolean(t) && typeof t === "object")
+        .map((t, i) => ({
+          id: `task_${i + 1}`,
+          title: cleanText(t.title, 200),
+          tag: cleanText(t.tag, 30) || "Strategy",
           done: false,
-        },
-      ];
+        }))
+        .filter((t) => t.title)
+        .slice(0, 4);
+    } catch (error: unknown) {
+      // Fall through to the built-in starter tasks below.
+      console.error("Failed to generate initial tasks with AI", error);
+      tasks = [];
     }
   }
 
@@ -522,13 +579,22 @@ Description: ${project.description || "N/A"}`;
     ];
   }
 
-  // Save defaults to metadata
+  // Save to metadata — re-read first so a slow AI call never overwrites
+  // tasks (or anything else) written in the meantime.
   const supabase = await createSupabaseServerClient();
+  const { data: fresh } = await supabase
+    .from("projects")
+    .select("metadata")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!fresh) return;
+
+  const freshMetadata = readProjectMetadata(fresh.metadata);
+  if (readTasks(freshMetadata).length > 0) return;
+
   await supabase
     .from("projects")
-    .update({
-      metadata: { ...(project.metadata || {}), tasks },
-    })
+    .update({ metadata: { ...freshMetadata, tasks } as unknown as Json })
     .eq("id", projectId);
 }
 
@@ -575,8 +641,8 @@ export async function getDashboardData() {
   }
 
   // 3. Extract tasks from project metadata
-  const metadata = (project.metadata as any) || {};
-  let tasks: DashboardTask[] = metadata.tasks || [];
+  const metadata = readProjectMetadata(project.metadata);
+  let tasks: DashboardTask[] = readTasks(metadata);
 
   // If no tasks exist, initialize defaults
   if (tasks.length === 0) {
@@ -588,8 +654,12 @@ export async function getDashboardData() {
         done: false,
       },
     ];
-    generateInitialTasks(user.id, project.id, startup, project).catch((err) =>
-      console.error("Background task generation failed: ", err),
+    // Runs after the response is sent and is kept alive by the platform —
+    // a bare un-awaited promise can be frozen on serverless hosts.
+    after(() =>
+      generateInitialTasks(user.id, project.id, startup, project).catch((err) =>
+        console.error("Background task generation failed: ", err),
+      ),
     );
   }
 
@@ -601,7 +671,7 @@ export async function getDashboardData() {
     .is("archived_at", null)
     .order("created_at", { ascending: false });
 
-  let copilotMessages: any[] = [];
+  let copilotMessages: MessageRow[] = [];
   let conversationId = conversations?.[0]?.id || "";
 
   if (!conversationId) {
@@ -711,6 +781,28 @@ export async function getDashboardData() {
     trackedMetrics,
   };
 
+  // People milestones can be assigned to. Falls back to just the current
+  // user when the team roster is unavailable (migration not applied yet).
+  let teamMembers: TaskAssignee[] = [];
+  const { data: roster } = await supabase.rpc("get_startup_team", {
+    target_startup_id: startup.id,
+  });
+  if (roster?.length) {
+    teamMembers = roster.map((member) => ({
+      userId: member.user_id,
+      fullName: member.full_name?.trim() || member.email.split("@")[0] || "Team member",
+      avatarUrl: member.avatar_url,
+    }));
+  }
+  if (!teamMembers.some((member) => member.userId === user.id)) {
+    const metaName = user.user_metadata?.full_name;
+    teamMembers.unshift({
+      userId: user.id,
+      fullName: (typeof metaName === "string" && metaName.trim()) || user.email?.split("@")[0] || "You",
+      avatarUrl: null,
+    });
+  }
+
   return {
     hasStartup: true,
     hasProject: true,
@@ -718,6 +810,8 @@ export async function getDashboardData() {
     project,
     projects,
     tasks,
+    teamMembers,
+    currentUserId: user.id,
     conversationId,
     copilotMessages,
     overview,
@@ -738,12 +832,40 @@ export async function createStartupAndFirstProject(input: {
   projectDescription: string;
 }) {
   try {
+    const parsed = newStartupSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false as const,
+        error: parsed.error.issues[0]?.message ?? "Check the details and try again.",
+      };
+    }
+    input = parsed.data;
+
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { success: false as const, error: "Please sign in to continue." };
+
+    const tier = getPlanTier(user);
+    const { startups: startupLimit } = getPlanLimits(tier);
+    const { count: ownedCount } = await supabase
+      .from("startups")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id);
+    if ((ownedCount ?? 0) >= startupLimit) {
+      return {
+        success: false as const,
+        error: `The ${tier} plan includes up to ${startupLimit} businesses. Remove one or upgrade to add more.`,
+      };
+    }
+
     const { startup, error: startupError } = await createStartup({
       name: input.name,
       country_code: input.countryCode,
-      city: input.city,
-      industry: input.industry,
-      estimated_budget_cents: input.estimatedBudgetCents,
+      city: input.city || null,
+      industry: input.industry || null,
+      estimated_budget_cents: Math.round(input.estimatedBudgetCents),
       budget_currency: input.budgetCurrency,
     });
 
@@ -782,13 +904,17 @@ export async function createStartupAndFirstProject(input: {
 
     revalidatePath("/dashboard", "layout");
     return { success: true as const, startup, project };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error in createStartupAndFirstProject:", err);
     return {
       success: false as const,
-      error: err.message || "An unexpected error occurred.",
+      error: "An unexpected error occurred. Please try again.",
     };
   }
+}
+
+function readTasks(metadata: Record<string, unknown>): DashboardTask[] {
+  return Array.isArray(metadata.tasks) ? (metadata.tasks as DashboardTask[]) : [];
 }
 
 /**
@@ -799,29 +925,18 @@ export async function toggleDashboardTask(
   taskId: string,
   done: boolean,
 ) {
-  const supabase = await createSupabaseServerClient();
+  const access = await getProjectAccess(projectId);
+  if ("error" in access || typeof taskId !== "string") return false;
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("metadata")
-    .eq("id", projectId)
-    .single();
-
-  if (!project) return false;
-
-  const metadata = (project.metadata as any) || {};
-  const tasks: DashboardTask[] = metadata.tasks || [];
-
-  const updatedTasks = tasks.map((task) =>
-    task.id === taskId ? { ...task, done } : task,
+  const { supabase, metadata } = access;
+  const updatedTasks = readTasks(metadata).map((task) =>
+    task.id === taskId ? { ...task, done: Boolean(done) } : task,
   );
 
   const { error } = await supabase
     .from("projects")
-    .update({
-      metadata: { ...metadata, tasks: updatedTasks },
-    })
-    .eq("id", projectId);
+    .update({ metadata: { ...metadata, tasks: updatedTasks } as unknown as Json })
+    .eq("id", access.project.id);
 
   if (error) {
     console.error("Failed to toggle task:", error.message);
@@ -832,51 +947,165 @@ export async function toggleDashboardTask(
   return true;
 }
 
+const DUE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A real calendar date in YYYY-MM-DD form, or null. Throws nothing. */
+function cleanDueDate(value: unknown): string | null | undefined {
+  if (value === null || value === "") return null;
+  if (typeof value !== "string" || !DUE_DATE.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    ? value
+    : undefined;
+}
+
+/** True when `userId` belongs to the startup (only teammates can be assigned work). */
+async function isTeamMember(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  startupId: string,
+  userId: string,
+) {
+  if (!isUuid(userId)) return false;
+  const { data } = await supabase
+    .from("startup_members")
+    .select("user_id")
+    .eq("startup_id", startupId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return Boolean(data);
+}
+
 /**
- * Adds a new custom dashboard task.
+ * Adds a new custom dashboard task and returns it (with its real id), or null.
  */
 export async function addDashboardTask(
   projectId: string,
   title: string,
   tag: string,
-) {
-  const supabase = await createSupabaseServerClient();
+  options: { assigneeId?: string | null; dueDate?: string | null } = {},
+): Promise<DashboardTask | null> {
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return null;
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("metadata")
-    .eq("id", projectId)
-    .single();
+  const cleanTitle = cleanText(title, 200);
+  if (!cleanTitle) return null;
 
-  if (!project) return false;
+  const { supabase, metadata, startup } = access;
+  const tasks = readTasks(metadata);
+  if (tasks.length >= MAX_TASKS) return null;
 
-  const metadata = (project.metadata as any) || {};
-  const tasks: DashboardTask[] = metadata.tasks || [];
+  const dueDate = cleanDueDate(options?.dueDate ?? null);
+  if (dueDate === undefined) return null;
+  const assigneeId = options?.assigneeId || null;
+  if (assigneeId && !(await isTeamMember(supabase, startup.id, assigneeId))) return null;
 
   const newTask: DashboardTask = {
-    id: `task-${Date.now()}`,
-    title,
-    tag,
+    id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: cleanTitle,
+    tag: cleanText(tag, 30) || "Custom",
     done: false,
+    assigneeId,
+    dueDate,
   };
 
-  const updatedTasks = [...tasks, newTask];
+  const { error } = await supabase
+    .from("projects")
+    .update({ metadata: { ...metadata, tasks: [...tasks, newTask] } as unknown as Json })
+    .eq("id", access.project.id);
+
+  if (error) {
+    console.error("Failed to add task:", error.message);
+    return null;
+  }
+
+  revalidatePath("/dashboard");
+  return newTask;
+}
+
+/**
+ * Assigns a milestone to a teammate and/or sets its due date.
+ * Pass null to clear a field; omit a field to leave it unchanged.
+ */
+export async function updateDashboardTask(
+  projectId: string,
+  taskId: string,
+  patch: { assigneeId?: string | null; dueDate?: string | null },
+): Promise<{ success: true; task: DashboardTask } | { success: false; error: string }> {
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return { success: false, error: access.error };
+  if (typeof taskId !== "string" || !patch || typeof patch !== "object") {
+    return { success: false, error: "Milestone not found." };
+  }
+
+  const { supabase, metadata, startup } = access;
+  const tasks = readTasks(metadata);
+  const current = tasks.find((task) => task.id === taskId);
+  if (!current) return { success: false, error: "Milestone not found." };
+
+  const next: DashboardTask = { ...current };
+
+  if ("dueDate" in patch) {
+    const dueDate = cleanDueDate(patch.dueDate);
+    if (dueDate === undefined) return { success: false, error: "Choose a valid due date." };
+    next.dueDate = dueDate;
+  }
+
+  if ("assigneeId" in patch) {
+    const assigneeId = patch.assigneeId || null;
+    if (assigneeId && !(await isTeamMember(supabase, startup.id, assigneeId))) {
+      return { success: false, error: "You can only assign milestones to people on this team." };
+    }
+    next.assigneeId = assigneeId;
+  }
 
   const { error } = await supabase
     .from("projects")
     .update({
-      metadata: { ...metadata, tasks: updatedTasks },
+      metadata: {
+        ...metadata,
+        tasks: tasks.map((task) => (task.id === taskId ? next : task)),
+      } as unknown as Json,
     })
-    .eq("id", projectId);
+    .eq("id", access.project.id);
 
   if (error) {
-    console.error("Failed to add task:", error.message);
+    console.error("Failed to update task:", error.message);
+    return { success: false, error: "Could not save the milestone. Please try again." };
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true, task: next };
+}
+
+/**
+ * Removes a milestone.
+ */
+export async function deleteDashboardTask(projectId: string, taskId: string) {
+  const access = await getProjectAccess(projectId);
+  if ("error" in access || typeof taskId !== "string") return false;
+
+  const { supabase, metadata } = access;
+  const tasks = readTasks(metadata);
+  const remaining = tasks.filter((task) => task.id !== taskId);
+  if (remaining.length === tasks.length) return false;
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ metadata: { ...metadata, tasks: remaining } as unknown as Json })
+    .eq("id", access.project.id);
+
+  if (error) {
+    console.error("Failed to delete task:", error.message);
     return false;
   }
 
   revalidatePath("/dashboard");
   return true;
 }
+
+export type CopilotReply =
+  | { success: true; reply: string }
+  | { success: false; error: string };
 
 /**
  * Sends a chat message to the copilot and stores both user prompt and assistant response.
@@ -885,62 +1114,61 @@ export async function sendStatefulCopilotMessage(
   projectId: string,
   conversationId: string,
   messageText: string,
-) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error("You must be signed in.");
+): Promise<CopilotReply> {
+  const text = cleanText(messageText, MAX_CHAT_MESSAGE_LENGTH + 1);
+  if (!text) return { success: false, error: "Type a message first." };
+  if (text.length > MAX_CHAT_MESSAGE_LENGTH) {
+    return {
+      success: false,
+      error: `Messages can be up to ${MAX_CHAT_MESSAGE_LENGTH} characters.`,
+    };
+  }
+  if (!isUuid(conversationId)) {
+    return { success: false, error: "This conversation is not available." };
+  }
+
+  const access = await getProjectAccess(projectId);
+  if ("error" in access) return { success: false, error: access.error };
+  const { supabase, user, startup, project } = access;
+
+  // The conversation must belong to this very project (RLS already limits it
+  // to the user's startups) — otherwise replies could be written elsewhere.
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("id", conversationId)
+    .eq("project_id", project.id)
+    .maybeSingle();
+  if (!conversation) {
+    return { success: false, error: "This conversation is not available." };
   }
 
   const rateLimit = await checkAiRateLimit(user.id);
-  if (!rateLimit.allowed) {
-    throw new Error(AI_RATE_LIMIT_MESSAGE);
-  }
+  if (!rateLimit.allowed) return { success: false, error: rateLimit.message };
 
   // 1. Insert user message
   const { error: userMsgErr } = await supabase.from("messages").insert({
-    conversation_id: conversationId,
+    conversation_id: conversation.id,
     author_id: user.id,
     role: "user",
-    content: messageText,
+    content: text,
   });
 
   if (userMsgErr) {
     console.error("Error inserting user message:", userMsgErr.message);
-    throw new Error("Failed to save message.");
+    return { success: false, error: "Failed to save your message. Please try again." };
   }
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("startup_id, title, description, metadata")
-    .eq("id", projectId)
-    .single();
-
-  if (!project || !project.startup_id) {
-    throw new Error("Associated project not found.");
-  }
-
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("*")
-    .eq("id", project.startup_id)
-    .single();
-
-  // 3. Fetch entire conversation messages
-  const { data: messages } = await supabase
+  // 2. Recent conversation history (bounded so prompts stay small and cheap)
+  const { data: recent } = await supabase
     .from("messages")
     .select("role, content")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true });
+    .eq("conversation_id", conversation.id)
+    .order("created_at", { ascending: false })
+    .limit(COPILOT_HISTORY_LIMIT);
+  const messages = (recent || []).slice().reverse();
 
-  const { getDocumentContextForStartup } = await import(
-    "@/src/app/actions/documents"
-  );
-  const documentContext = await getDocumentContextForStartup(
-    project.startup_id,
-  );
+  const documentContext = await getDocumentContextForStartup(startup.id);
 
   const metadata =
     project.metadata &&
@@ -995,24 +1223,38 @@ ${documentContext}`;
   }));
 
   // 4. Request response from the available AI provider
-  const { generateTextWithFallback } = await import("@/src/lib/ai-providers");
-  const reply = await generateTextWithFallback(
-    systemContext,
-    formattedMessages,
-    {
-      maxTokens: 900,
-      temperature: 0.55,
-    },
-  );
+  let reply: string;
+  try {
+    const { generateTextWithFallback } = await import("@/src/lib/ai-providers");
+    reply = (
+      await generateTextWithFallback(systemContext, formattedMessages, {
+        maxTokens: 900,
+        temperature: 0.55,
+      })
+    ).trim();
+  } catch (err) {
+    console.error("Copilot provider error:", err instanceof Error ? err.message : err);
+    return {
+      success: false,
+      error: "Copilot could not answer right now. Please try again in a moment.",
+    };
+  }
+  if (!reply) {
+    return { success: false, error: "Copilot returned an empty answer. Please try again." };
+  }
 
   // 5. Insert assistant response (must use service-role client — RLS only allows
-  //    role='user' inserts for regular users; assistant messages are server-only)
-  await supabaseAdmin.from("messages").insert({
-    conversation_id: conversationId,
+  //    user-role inserts for regular users; assistant messages are server-only).
+  //    The conversation id was verified above against this project.
+  const { error: assistantErr } = await getSupabaseAdmin().from("messages").insert({
+    conversation_id: conversation.id,
     role: "assistant",
     content: reply,
   });
+  if (assistantErr) {
+    console.error("Error inserting assistant message:", assistantErr.message);
+  }
 
   revalidatePath("/dashboard");
-  return reply;
+  return { success: true, reply };
 }

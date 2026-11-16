@@ -1,5 +1,4 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
-import { supabaseAdmin } from "@/src/lib/supabase/admin"
 
 /**
  * Get all active projects for a startup.
@@ -43,21 +42,9 @@ export async function createProject(input: {
     target_audience: input.target_audience ?? null,
   }
 
-  try {
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const { data: adminData, error: adminErr } = await supabaseAdmin
-        .from("projects")
-        .insert(payload)
-        .select()
-        .single()
-      if (!adminErr && adminData) {
-        return adminData
-      }
-    }
-  } catch (e) {
-    // Admin client fallback
-  }
-
+  // Always through the user's session: row-level security only allows this
+  // for members of the startup. (This used to go through the service role,
+  // which would have let any signed-in user add projects to any startup.)
   const { data, error } = await supabase
     .from("projects")
     .insert(payload)

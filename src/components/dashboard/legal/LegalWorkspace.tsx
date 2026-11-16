@@ -6,9 +6,7 @@ import {
   Building2,
   FileCheck,
   ShieldAlert,
-  HelpCircle,
   RefreshCw,
-  Loader2,
   CheckCircle,
   Clock,
   DollarSign,
@@ -29,7 +27,6 @@ interface LegalWorkspaceProps {
 export function LegalWorkspaceUI({
   projectId,
   startupName,
-  countryCode,
   industry,
   initialWorkspace,
 }: LegalWorkspaceProps) {
@@ -42,6 +39,8 @@ export function LegalWorkspaceUI({
     if (!initialWorkspace) {
       handleGenerate()
     }
+    // Generate once when there is no saved analysis; handleGenerate is recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWorkspace])
 
   async function handleGenerate() {
@@ -54,8 +53,8 @@ export function LegalWorkspaceUI({
       } else {
         setError(res.error)
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load legal analysis.")
+    } catch {
+      setError("Failed to load legal analysis.")
     } finally {
       setLoading(false)
     }
@@ -71,8 +70,8 @@ export function LegalWorkspaceUI({
       } else {
         setError(res.error)
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to refresh legal analysis.")
+    } catch {
+      setError("Failed to refresh legal analysis.")
     } finally {
       setRefreshing(false)
     }

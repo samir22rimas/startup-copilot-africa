@@ -1,16 +1,13 @@
 import Link from "next/link"
+import { PLAN_LIMITS } from "@/src/lib/plans"
 import { getAdminOverviewStats } from "@/src/app/actions/admin"
 import {
   Users,
   Building2,
-  FolderKanban,
   MessageSquare,
   CreditCard,
   TrendingUp,
-  Activity,
   ArrowRight,
-  Sparkles,
-  CheckCircle2,
 } from "lucide-react"
 
 export default async function AdminOverviewPage() {
@@ -166,12 +163,12 @@ export default async function AdminOverviewPage() {
 
           <div className="p-4 rounded-xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 text-center">
             <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase">
-              Starter Plan
+              Team Plan
             </span>
             <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
-              {planDistribution.Starter}
+              {planDistribution.Team}
             </div>
-            <span className="text-[11px] text-blue-500">$19 / mo</span>
+            <span className="text-[11px] text-blue-500">${PLAN_LIMITS.Pro.monthlyPriceUsd} / mo list</span>
           </div>
 
           <div className="p-4 rounded-xl bg-green-500/5 dark:bg-green-500/10 border border-green-500/20 text-center">
@@ -181,17 +178,7 @@ export default async function AdminOverviewPage() {
             <div className="text-2xl font-bold text-green-700 dark:text-green-300 mt-1">
               {planDistribution.Pro}
             </div>
-            <span className="text-[11px] text-green-500">$49 / mo</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-purple-500/5 dark:bg-purple-500/10 border border-purple-500/20 text-center">
-            <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold uppercase">
-              Enterprise Plan
-            </span>
-            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">
-              {planDistribution.Enterprise}
-            </div>
-            <span className="text-[11px] text-purple-500">$199 / mo</span>
+            <span className="text-[11px] text-green-500">${PLAN_LIMITS.Team.monthlyPriceUsd} / mo list</span>
           </div>
         </div>
       </div>
@@ -272,7 +259,7 @@ export default async function AdminOverviewPage() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-2">
-                    "{fb.message}"
+                    &ldquo;{fb.message}&rdquo;
                   </p>
                   <div className="flex items-center justify-between text-[11px] text-zinc-400">
                     <span>Rating: {fb.rating ? "★".repeat(fb.rating) : "N/A"}</span>

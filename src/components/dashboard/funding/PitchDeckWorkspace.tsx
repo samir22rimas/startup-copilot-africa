@@ -1,7 +1,9 @@
 "use client"
 
 import { generatePitchDeck, savePitchDeck, type PitchDeck } from "@/src/app/actions/pitch-deck"
-import { ArrowLeft, Download, FileText, Loader2, Pencil, Save, Sparkles } from "lucide-react"
+import { ExportMenu, type ExportOption } from "@/src/components/shared/ExportMenu"
+import { exportDeck } from "@/src/lib/export"
+import { ArrowLeft, FileText, Loader2, Pencil, Save, Sparkles } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
@@ -32,15 +34,13 @@ export function PitchDeckWorkspace({ projectId, startupName, initialDeck }: { pr
     setDeck({ ...deck, slides: deck.slides.map((slide, index) => index === activeIndex ? { ...slide, [field]: value } : slide) })
   }
 
-  const download = () => {
-    if (!deck) return
-    const content = deck.slides.map((slide, index) => `${index + 1}. ${slide.title}\n${slide.body}`).join("\n\n")
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(new Blob([`${startupName} pitch deck\n\n${content}`], { type: "text/plain" }))
-    link.download = `${startupName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "startup"}-pitch-deck.txt`
-    link.click()
-    URL.revokeObjectURL(link.href)
-  }
+  // Exports use the deck as currently shown, including unsaved edits.
+  const exportOptions: ExportOption[] = deck
+    ? [
+        { id: "pptx", label: "PowerPoint (.pptx)", hint: "Editable slides", run: () => exportDeck("pptx", { startupName, generatedAt: deck.generatedAt, slides: deck.slides }) },
+        { id: "pdf", label: "PDF", hint: "Ready to send to investors", run: () => exportDeck("pdf", { startupName, generatedAt: deck.generatedAt, slides: deck.slides }) },
+      ]
+    : []
 
   return <div className="mx-auto max-w-7xl space-y-6 pb-10">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -50,7 +50,7 @@ export function PitchDeckWorkspace({ projectId, startupName, initialDeck }: { pr
         <p className="mt-1 text-sm text-muted-foreground">Create, refine, and save an evidence-led investor story for {startupName}.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {deck && <button onClick={download} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-muted"><Download className="size-4" /> Export</button>}
+        {deck && <ExportMenu label="Export" options={exportOptions} className="h-10 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-muted" />}
         {deck && <button onClick={save} disabled={isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-muted disabled:opacity-60"><Save className="size-4" /> Save</button>}
         <button onClick={generate} disabled={isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"><Sparkles className="size-4" /> {isPending ? <Loader2 className="size-4 animate-spin" /> : null}{deck ? "Regenerate" : "Generate deck"}</button>
       </div>

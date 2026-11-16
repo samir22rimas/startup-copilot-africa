@@ -12,6 +12,10 @@ import {
   Activity,
   ArrowLeft,
   ShieldCheck,
+  Cpu,
+  Compass,
+  ToggleRight,
+  ScrollText,
 } from "lucide-react"
 
 const adminNavItems = [
@@ -20,7 +24,11 @@ const adminNavItems = [
   { icon: CreditCard, label: "Subscriptions", href: "/admin/subscriptions" },
   { icon: MessageSquare, label: "User Feedback", href: "/admin/feedback" },
   { icon: Building2, label: "Startups", href: "/admin/startups" },
-  { icon: Activity, label: "Logs & Usage", href: "/admin/logs" },
+  { icon: Compass, label: "Opportunities", href: "/admin/opportunities" },
+  { icon: Cpu, label: "AI Usage", href: "/admin/ai-usage" },
+  { icon: ToggleRight, label: "Features & Plans", href: "/admin/features" },
+  { icon: Activity, label: "Usage Events", href: "/admin/logs" },
+  { icon: ScrollText, label: "Audit Trail", href: "/admin/audit" },
 ]
 
 export function AdminSidebar() {

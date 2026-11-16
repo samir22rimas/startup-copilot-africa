@@ -12,6 +12,7 @@ export async function writeActiveProjectCookie(projectId: string) {
   const store = await cookies()
   store.set(ACTIVE_PROJECT_COOKIE, projectId, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
