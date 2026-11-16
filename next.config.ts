@@ -55,6 +55,7 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "bottom-right",
   },
+  turbopack: {},
   experimental: {
     serverActions: {
       // Document uploads go through a server action and may be up to 25 MB

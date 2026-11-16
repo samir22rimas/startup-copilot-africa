@@ -215,3 +215,4 @@ export function PricingSection() {
     </section>
   )
 }
+
