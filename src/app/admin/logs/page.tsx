@@ -28,7 +28,7 @@ export default async function AdminLogsPage() {
 
       <div className="rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[44rem] text-left text-xs border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold uppercase tracking-wider">
                 <th className="py-3.5 px-4">Event Name</th>

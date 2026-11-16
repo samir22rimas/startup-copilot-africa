@@ -101,7 +101,7 @@ export default async function AdminAiUsagePage() {
         <Panel>
           <PanelHeader title="By feature" />
           <div className="overflow-x-auto">
-            <table className="tabular w-full border-collapse text-sm">
+            <table className="tabular w-full min-w-[24rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th scope="col" className="px-5 py-2.5 font-medium">Feature</th>

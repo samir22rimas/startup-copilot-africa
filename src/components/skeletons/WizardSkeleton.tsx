@@ -4,7 +4,7 @@ export function WizardSkeleton() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 py-6">
       <div className="mb-8 space-y-2 text-center">
-        <Skeleton className="mx-auto h-9 w-72" />
+        <Skeleton className="mx-auto h-9 w-72 max-w-full" />
         <Skeleton className="mx-auto h-4 w-96 max-w-full" />
       </div>
 

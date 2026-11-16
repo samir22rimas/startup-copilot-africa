@@ -17,13 +17,16 @@ export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
   // Supabase may fall back to Site URL (e.g. /) when /auth/callback is not whitelisted.
+  // Expired/invalid email links arrive the same way, carrying `error_code`.
   const oauthCode = searchParams.get("code")
-  if (oauthCode && pathname !== "/auth/callback") {
+  const authErrorCode = searchParams.get("error_code")
+  if ((oauthCode || authErrorCode) && !pathname.startsWith("/auth/")) {
     const callbackUrl = new URL("/auth/callback", request.url)
     searchParams.forEach((value, key) => {
       callbackUrl.searchParams.set(key, value)
     })
-    callbackUrl.searchParams.set("next", safePostAuthPath(searchParams.get("next")))
+    // Keep the page the link landed on (e.g. /update-password) as the destination.
+    callbackUrl.searchParams.set("next", safePostAuthPath(searchParams.get("next") ?? pathname))
     return NextResponse.redirect(callbackUrl)
   }
 
@@ -67,6 +70,9 @@ export async function proxy(request: NextRequest) {
   if (isProtected && !user) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set("redirectedFrom", pathname)
+    // Honoured after sign-in only when it is a known safe path.
+    const safeNext = safePostAuthPath(pathname, "")
+    if (safeNext) signInUrl.searchParams.set("next", safeNext)
     return NextResponse.redirect(signInUrl)
   }
 
@@ -92,8 +98,8 @@ export const config = {
      *  - _next/image (image optimisation)
      *  - favicon.ico
      *  - public assets (images, etc.)
-     *  - /auth/callback (Supabase OAuth & magic-link handler)
+     *  - /auth/callback, /auth/confirm (Supabase OAuth & email-link handlers)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|auth/callback).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|auth/callback|auth/confirm).*)",
   ],
 }

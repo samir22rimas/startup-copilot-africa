@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import * as React from "react"
 import { cn } from "@/src/lib/utils"
 import {
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
   Compass,
   ToggleRight,
   ScrollText,
+  X,
 } from "lucide-react"
 
 const adminNavItems = [
@@ -31,13 +33,57 @@ const adminNavItems = [
   { icon: ScrollText, label: "Audit Trail", href: "/admin/audit" },
 ]
 
+/** Desktop sidebar; on small screens the same content lives in <AdminMobileDrawer />. */
 export function AdminSidebar() {
+  return (
+    <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-zinc-200 bg-zinc-900 text-white dark:border-zinc-800 md:flex">
+      <AdminNavContent />
+    </aside>
+  )
+}
+
+export function AdminMobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  React.useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => document.removeEventListener("keydown", onKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] md:hidden">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Admin menu"
+        className="absolute inset-y-0 left-0 flex w-[min(18rem,86vw)] flex-col bg-zinc-900 text-white shadow-2xl"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="absolute right-2 top-3 z-10 flex size-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-white"
+        >
+          <X className="size-4" />
+        </button>
+        <AdminNavContent onNavigate={onClose} />
+      </div>
+    </div>
+  )
+}
+
+function AdminNavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <aside className="flex h-auto max-h-[42dvh] w-full shrink-0 flex-col border-r border-zinc-200 bg-zinc-900 text-white dark:border-zinc-800 md:h-full md:max-h-none md:w-64">
+    <>
       {/* Brand Header */}
-      <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+      <div className="p-4 pr-12 md:pr-4 border-b border-zinc-800 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center font-bold text-white shadow-md">
             <ShieldCheck className="w-5 h-5" />
@@ -66,6 +112,7 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -84,12 +131,13 @@ export function AdminSidebar() {
       <div className="p-3 border-t border-zinc-800">
         <Link
           href="/dashboard"
+          onClick={onNavigate}
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 text-green-400" />
           <span>Return to App</span>
         </Link>
       </div>
-    </aside>
+    </>
   )
 }

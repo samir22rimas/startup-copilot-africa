@@ -125,7 +125,7 @@ export function UserManagementTable({ initialUsers }: { initialUsers: AdminUserL
       {/* Users Table */}
       <div className="rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
         <div className="max-h-[min(60dvh,42rem)] overflow-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[44rem] text-left text-xs border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="bg-zinc-50/80 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold uppercase tracking-wider">
                 <th className="py-4 px-5">User</th>

@@ -4,20 +4,40 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import * as React from "react"
 
-import { submitAuth, type AuthState } from "@/src/app/actions/auth"
+import { Eye, EyeOff } from "lucide-react"
+
+import { resendConfirmation, submitAuth, type AuthState } from "@/src/app/actions/auth"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+import { ROUTES } from "@/src/lib/constants"
 import { authCallbackUrl, getClientSiteUrl } from "@/src/lib/site-url.shared"
 import { createSupabaseBrowserClient } from "@/src/lib/supabase/client"
 import { safePostAuthPath } from "@/src/lib/validation"
 
 const initialState: AuthState = {}
 
-function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in" | "sign-up" }) {
-  const [isLogin, setIsLogin] = React.useState(initialMode === "sign-in")
+/** Fixed messages for `?error=` codes set by the auth routes. */
+const URL_ERROR_MESSAGES: Record<string, string> = {
+  "missing-code": "Authentication code missing. Please sign in again.",
+  configuration: "Sign-in is not configured correctly. Please contact support.",
+  "link-expired": "That email link has expired or was already used. Sign in below, or request a new confirmation email.",
+  "other-browser":
+    "That email link was opened in a different browser from the one you used to sign up. Your email may already be confirmed — try signing in below.",
+}
+
+function LoginFormContent({ isLogin, onModeChange }: { isLogin: boolean; onModeChange: (isLogin: boolean) => void }) {
   const [googlePending, setGooglePending] = React.useState(false)
   const [googleError, setGoogleError] = React.useState<string | null>(null)
-  const [state, action, pending] = React.useActionState(submitAuth, initialState)
+  const [showPassword, setShowPassword] = React.useState(false)
+  // Controlled so values survive React's automatic form reset after an action.
+  const [fullName, setFullName] = React.useState("")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [authState, action, pending] = React.useActionState(submitAuth, initialState)
+  const [resendState, resendAction, resendPending] = React.useActionState(resendConfirmation, initialState)
+  const [lastAction, setLastAction] = React.useState<"auth" | "resend">("auth")
+  const state = lastAction === "resend" && (resendState.error || resendState.message) ? resendState : authState
+  const unconfirmedEmail = (authState.unconfirmedEmail ?? resendState.unconfirmedEmail) || null
   const searchParams = useSearchParams()
 
   const oauthError = searchParams.get("error")
@@ -28,16 +48,11 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
 
   // Only fixed messages are shown: text from the URL is never rendered, so a
   // crafted link cannot put words in the app's mouth.
-  let urlErrorMessage: string | null = null
-  if (oauthError) {
-    if (oauthError === "missing-code") {
-      urlErrorMessage = "Authentication code missing. Please sign in again."
-    } else if (oauthError === "configuration") {
-      urlErrorMessage = "Sign-in is not configured correctly. Please contact support."
-    } else {
-      urlErrorMessage = "Authentication failed or was cancelled. Please try again."
-    }
-  }
+  // Hidden once the user has submitted the form, so it never sits next to a newer result.
+  const urlErrorMessage =
+    oauthError && !authState.error && !authState.message
+      ? (URL_ERROR_MESSAGES[oauthError] ?? "Authentication failed or was cancelled. Please try again.")
+      : null
 
   async function handleGoogleSignIn() {
     setGoogleError(null)
@@ -68,10 +83,10 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
     }
   }
 
-  const isBusy = pending || googlePending
+  const isBusy = pending || googlePending || resendPending
 
   return (
-    <form action={action} className="w-full max-w-sm mx-auto space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
+    <form action={action} onSubmit={() => setLastAction("auth")} className="w-full max-w-sm mx-auto space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
       <input type="hidden" name="mode" value={isLogin ? "sign-in" : "sign-up"} />
       <input type="hidden" name="next" value={next} />
       {isInvite && (
@@ -85,8 +100,8 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
       </div>
 
       <div className="flex p-1.5 bg-zinc-100 dark:bg-zinc-900 rounded-2xl shadow-inner">
-        <button type="button" onClick={() => setIsLogin(true)} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${isLogin ? "bg-white dark:bg-zinc-800 shadow-md text-green-800 dark:text-green-400 scale-[1.02]" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>Sign In</button>
-        <button type="button" onClick={() => setIsLogin(false)} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${!isLogin ? "bg-white dark:bg-zinc-800 shadow-md text-green-800 dark:text-green-400 scale-[1.02]" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>Sign Up</button>
+        <button type="button" onClick={() => onModeChange(true)} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${isLogin ? "bg-white dark:bg-zinc-800 shadow-md text-green-800 dark:text-green-400 scale-[1.02]" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>Sign In</button>
+        <button type="button" onClick={() => onModeChange(false)} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${!isLogin ? "bg-white dark:bg-zinc-800 shadow-md text-green-800 dark:text-green-400 scale-[1.02]" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>Sign Up</button>
       </div>
 
       <Button
@@ -114,19 +129,30 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
         {!isLogin && (
           <div className="space-y-2">
             <label htmlFor="fullName" className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Full name</label>
-            <Input id="fullName" name="fullName" autoComplete="name" required={!isLogin} className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="Your full name" />
+            <Input id="fullName" name="fullName" autoComplete="name" required={!isLogin} value={fullName} onChange={(e) => setFullName(e.target.value)} className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="Your full name" />
           </div>
         )}
         <div className="space-y-2">
           <label htmlFor="email" className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Email address</label>
-          <Input id="email" name="email" autoComplete="email" required className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="name@company.com" type="email" />
+          <Input id="email" name="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="name@company.com" type="email" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Password</label>
-            {isLogin && <Link href="/forgot-password" className="text-xs font-bold text-green-700 dark:text-green-400 hover:underline">Forgot?</Link>}
+            {isLogin && <Link href={ROUTES.forgotPassword} className="text-xs font-bold text-green-700 dark:text-green-400 hover:underline">Forgot?</Link>}
           </div>
-          <Input id="password" name="password" autoComplete={isLogin ? "current-password" : "new-password"} required minLength={8} className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="••••••••" type="password" />
+          <div className="relative">
+            <Input id="password" name="password" autoComplete={isLogin ? "current-password" : "new-password"} required minLength={8} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} className="bg-[#f3f6fc] dark:bg-zinc-900 border-zinc-200/50 dark:border-zinc-800 text-sm h-12 rounded-xl pr-11 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-green-500/20 focus-visible:border-green-600" placeholder="••••••••" type={showPassword ? "text" : "password"} />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+          {!isLogin && <p className="text-xs text-zinc-400 dark:text-zinc-500">At least 8 characters.</p>}
         </div>
       </div>
 
@@ -139,6 +165,20 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
         <p role="status" className="rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200/50 px-4 py-2.5 text-sm text-green-800 dark:text-green-400 font-semibold leading-snug">
           {state.message}
         </p>
+      )}
+
+      {unconfirmedEmail && (
+        <Button
+          type="submit"
+          formAction={resendAction}
+          formNoValidate
+          onClick={() => setLastAction("resend")}
+          disabled={isBusy}
+          variant="outline"
+          className="w-full h-11 text-sm font-semibold rounded-xl"
+        >
+          {resendPending ? "Sending…" : "Resend confirmation email"}
+        </Button>
       )}
 
       <Button disabled={isBusy} type="submit" className="w-full h-12 text-sm font-semibold rounded-xl bg-green-800 hover:bg-green-900 text-white shadow-lg shadow-green-900/10 hover:shadow-green-900/20 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300">
@@ -161,9 +201,12 @@ function LoginFormContent({ initialMode = "sign-in" }: { initialMode?: "sign-in"
 }
 
 export function LoginForm({ initialMode = "sign-in" }: { initialMode?: "sign-in" | "sign-up" }) {
+  const [isLogin, setIsLogin] = React.useState(initialMode === "sign-in")
+
   return (
     <React.Suspense fallback={<div className="w-full max-w-sm mx-auto p-6 text-center text-zinc-400">Loading form…</div>}>
-      <LoginFormContent initialMode={initialMode} />
+      {/* Keyed by mode so switching tabs clears stale errors and messages. */}
+      <LoginFormContent key={isLogin ? "sign-in" : "sign-up"} isLogin={isLogin} onModeChange={setIsLogin} />
     </React.Suspense>
   )
 }

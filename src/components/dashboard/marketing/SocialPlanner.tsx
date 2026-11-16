@@ -52,7 +52,8 @@ export function SocialPlanner() {
           Month view is not available yet — week view shows posts you have actually scheduled.
         </div>
       ) : (
-      <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+      <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto flex-1 min-h-0">
+      <div className="flex h-full min-w-[40rem] flex-col">
         {/* Header */}
         <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-950/50 shrink-0">
           {days.map((day) => (
@@ -89,6 +90,7 @@ export function SocialPlanner() {
             )
           })}
         </div>
+      </div>
       </div>
       )}
 

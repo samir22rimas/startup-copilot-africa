@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Anza works</title>
+<style>
+  :root{--bg:#082b22;--bg2:#0d3d30;--fg:#f0fdf4;--mut:#a7d9bf;--acc:#4ade80;--card:rgba(255,255,255,.07);--bd:rgba(255,255,255,.14)}
+  *{box-sizing:border-box;margin:0}
+  body{min-height:100dvh;background:#04170f;color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;padding:12px}
+  .player{width:min(100%,960px);aspect-ratio:16/9;max-height:calc(100dvh - 24px);position:relative;overflow:hidden;border-radius:16px;background:radial-gradient(120% 120% at 20% 0%,var(--bg2),var(--bg));container-type:inline-size;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .scene{position:absolute;inset:0;padding:5cqw 6cqw 14cqw;display:flex;flex-direction:column;justify-content:center;gap:2.2cqw;opacity:0;visibility:hidden;transition:opacity .5s}
+  .scene.on{opacity:1;visibility:visible}
+  .tag{font-size:1.5cqw;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);font-weight:700}
+  h1,h2{font-size:4.6cqw;line-height:1.1;letter-spacing:-.02em}
+  h1{font-size:6.4cqw}
+  p.sub{font-size:2.1cqw;color:var(--mut);max-width:60cqw;line-height:1.4}
+  .row{display:flex;gap:1.6cqw;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:1.4cqw;padding:1.6cqw 2cqw;font-size:1.9cqw;display:flex;align-items:center;gap:1.1cqw;backdrop-filter:blur(6px)}
+  .card b{display:block;font-size:2cqw}.card small{display:block;color:var(--mut);font-size:1.5cqw;margin-top:.2cqw}
+  .ico{font-size:2.8cqw}
+  .on .rise{animation:rise .7s both}
+  .on .rise:nth-child(2){animation-delay:.25s}.on .rise:nth-child(3){animation-delay:.5s}.on .rise:nth-child(4){animation-delay:.75s}.on .rise:nth-child(5){animation-delay:1s}
+  @keyframes rise{from{opacity:0;transform:translateY(2.4cqw)}to{opacity:1;transform:none}}
+  .logo{width:9cqw;height:9cqw;border-radius:2cqw;background:#fff;object-fit:contain;padding:.8cqw}
+  .bar{height:1.1cqw;border-radius:99px;background:var(--bd);overflow:hidden;width:34cqw}
+  .bar i{display:block;height:100%;width:0;background:var(--acc);border-radius:99px}
+  .on .bar i{animation:fill 3s .6s forwards}@keyframes fill{to{width:78%}}
+  .chat{display:flex;flex-direction:column;gap:1cqw;max-width:56cqw}
+  .msg{padding:1.2cqw 1.8cqw;border-radius:1.4cqw;font-size:1.9cqw;max-width:42cqw}
+  .me{align-self:flex-end;background:var(--acc);color:#052e1d}.ai{background:var(--card);border:1px solid var(--bd)}
+  .btn{display:inline-block;background:var(--acc);color:#052e1d;font-weight:700;font-size:2.2cqw;padding:1.2cqw 3cqw;border-radius:1.2cqw}
+  .cap{position:absolute;left:0;right:0;bottom:6.5cqw;text-align:center;padding:0 6cqw;pointer-events:none}
+  .cap span{display:inline-block;background:rgba(0,0,0,.65);padding:.6cqw 1.6cqw;border-radius:.8cqw;font-size:1.9cqw;line-height:1.35}
+  .ctl{position:absolute;left:0;right:0;bottom:0;height:5cqw;min-height:36px;display:flex;align-items:center;gap:1.4cqw;padding:0 2cqw;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+  .ctl button{all:unset;cursor:pointer;color:var(--fg);font-size:max(14px,2cqw);padding:.4cqw 1cqw;border-radius:.8cqw}
+  .ctl button:hover,.ctl button:focus-visible{background:rgba(255,255,255,.18)}
+  .seek{flex:1;height:max(6px,.8cqw);background:rgba(255,255,255,.25);border-radius:99px;cursor:pointer;position:relative}
+  .seek i{position:absolute;inset:0 auto 0 0;width:0;background:var(--acc);border-radius:99px}
+  .time{font-size:max(11px,1.5cqw);color:var(--mut);font-variant-numeric:tabular-nums}
+  @media (max-width:560px){.player{aspect-ratio:auto;height:calc(100dvh - 24px);container-type:normal}
+    .scene{padding:20px 18px 120px;gap:14px}.tag{font-size:12px}h1{font-size:34px}h2{font-size:26px}p.sub{font-size:15px;max-width:none}
+    .card{font-size:14px;padding:10px 12px;gap:8px}.card b{font-size:15px}.card small{font-size:12px}.ico{font-size:22px}
+    .logo{width:64px;height:64px;border-radius:14px}.bar{width:100%;height:8px}.msg{font-size:14px;max-width:90%}.btn{font-size:16px;padding:10px 22px}
+    .cap{bottom:44px;padding:0 12px}.cap span{font-size:13px}.ctl{height:40px}.ctl button{font-size:15px}.time{font-size:11px}}
+  @media (prefers-reduced-motion:reduce){.on .rise,.on .bar i{animation-duration:.01s;animation-delay:0s}}
+</style>
+</head>
+<body>
+<div class="player" id="player" aria-label="Anza explainer video">
+
+  <section class="scene" data-d="7" data-say="Meet Anza, your AI co-founder for building a business in Africa. From a first idea to a growing company, it guides you step by step.">
+    <img class="logo rise" src="/logo.png" alt="">
+    <h1 class="rise">Meet Anza</h1>
+    <p class="sub rise">Your AI co-founder for building businesses in Africa — from first idea to growth.</p>
+  </section>
+
+  <section class="scene" data-d="8" data-say="Getting started takes minutes. Create your account, then tell Anza about your business: your idea, your country, and your stage. Everything that follows is tailored to you.">
+    <div class="tag rise">Step 1 · Get started</div>
+    <h2 class="rise">Tell Anza about your business</h2>
+    <div class="row">
+      <div class="card rise"><span class="ico">✍️</span><div><b>Describe your idea</b><small>In your own words</small></div></div>
+      <div class="card rise"><span class="ico">🌍</span><div><b>Pick country &amp; sector</b><small>Local context built in</small></div></div>
+      <div class="card rise"><span class="ico">🎨</span><div><b>Choose your brand colour</b><small>The app adapts to you</small></div></div>
+    </div>
+    <div class="bar rise"><i></i></div>
+  </section>
+
+  <section class="scene" data-d="9" data-say="Discover. Brainstorm ideas in the Idea Lab, run market research, and validate your idea with real customer interview questions before you spend a franc.">
+    <div class="tag rise">Step 2 · Discover</div>
+    <h2 class="rise">Find and test the right idea</h2>
+    <div class="row">
+      <div class="card rise"><span class="ico">💡</span><div><b>Idea Lab</b><small>Generate and compare ideas</small></div></div>
+      <div class="card rise"><span class="ico">🔎</span><div><b>Research</b><small>Market, competitors, trends</small></div></div>
+      <div class="card rise"><span class="ico">✅</span><div><b>Validation</b><small>Interviews and scoring</small></div></div>
+    </div>
+  </section>
+
+  <section class="scene" data-d="9" data-say="Plan. Map your model on a business canvas, generate a full business plan you can edit, and build financial projections with cash flow charts.">
+    <div class="tag rise">Step 3 · Plan</div>
+    <h2 class="rise">Turn it into a real plan</h2>
+    <div class="row">
+      <div class="card rise"><span class="ico">🧩</span><div><b>Business model canvas</b><small>One-page strategy</small></div></div>
+      <div class="card rise"><span class="ico">📄</span><div><b>Business plan</b><small>AI-drafted, fully editable</small></div></div>
+      <div class="card rise"><span class="ico">💰</span><div><b>Finance</b><small>Projections &amp; cash charts</small></div></div>
+    </div>
+  </section>
+
+  <section class="scene" data-d="9" data-say="Run. Organise work with projects and tasks, plan your social media content, and keep every important file safe in your document vault.">
+    <div class="tag rise">Step 4 · Run</div>
+    <h2 class="rise">Run your business day to day</h2>
+    <div class="row">
+      <div class="card rise"><span class="ico">📋</span><div><b>Projects &amp; tasks</b><small>Board, list and calendar</small></div></div>
+      <div class="card rise"><span class="ico">📣</span><div><b>Marketing</b><small>Posts, planner, growth ideas</small></div></div>
+      <div class="card rise"><span class="ico">🗂️</span><div><b>Documents</b><small>Store and export files</small></div></div>
+    </div>
+  </section>
+
+  <section class="scene" data-d="9" data-say="Grow. Find grants and opportunities, prepare your pitch deck for investors, track your analytics, and get guidance on legal essentials.">
+    <div class="tag rise">Step 5 · Grow</div>
+    <h2 class="rise">Raise, scale and stay compliant</h2>
+    <div class="row">
+      <div class="card rise"><span class="ico">🧭</span><div><b>Opportunities</b><small>Grants, programs, events</small></div></div>
+      <div class="card rise"><span class="ico">🚀</span><div><b>Funding &amp; pitch deck</b><small>Investor-ready</small></div></div>
+      <div class="card rise"><span class="ico">📈</span><div><b>Analytics</b><small>Know what works</small></div></div>
+      <div class="card rise"><span class="ico">⚖️</span><div><b>Legal</b><small>Registration &amp; contracts</small></div></div>
+    </div>
+  </section>
+
+  <section class="scene" data-d="8" data-say="Your Copilot is always one click away. Ask any question about your business and get answers grounded in your own data. Invite co-founders and teammates to work and chat together.">
+    <div class="tag rise">Always with you</div>
+    <h2 class="rise">Copilot &amp; team</h2>
+    <div class="chat">
+      <div class="msg me rise">What should I do this week?</div>
+      <div class="msg ai rise">Interview 5 customers, then update your pricing assumptions. I've added both to your tasks.</div>
+    </div>
+    <div class="row"><div class="card rise"><span class="ico">👥</span><div><b>Invite your team</b><small>Shared workspace and chat</small></div></div></div>
+  </section>
+
+  <section class="scene" data-d="7" data-say="Switch between several businesses, use Anza in your language, and in light or dark mode, on any device. Create your free account and start building today.">
+    <h2 class="rise">Ready to build?</h2>
+    <p class="sub rise">Multiple businesses · Your language · Light &amp; dark · Works on any screen</p>
+    <div class="rise"><span class="btn">Get started — it's free</span></div>
+  </section>
+
+  <div class="cap" aria-live="polite"><span id="cap" hidden></span></div>
+  <div class="ctl">
+    <button id="play" aria-label="Play or pause">⏸</button>
+    <div class="seek" id="seek" role="slider" aria-label="Seek" tabindex="0"><i id="prog"></i></div>
+    <span class="time" id="time">0:00</span>
+    <button id="voice" aria-pressed="false" aria-label="Toggle voice-over" title="Voice-over">🔇</button>
+    <button id="cc" aria-pressed="true" aria-label="Toggle captions" title="Captions">CC</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var scenes=[].slice.call(document.querySelectorAll(".scene"));
+  var durs=scenes.map(function(s){return +s.dataset.d});
+  var total=durs.reduce(function(a,b){return a+b},0);
+  var starts=[],acc=0;durs.forEach(function(d){starts.push(acc);acc+=d});
+  var t=0,playing=true,cur=-1,last=performance.now(),voice=false,cc=true;
+  var $=function(id){return document.getElementById(id)};
+  var cap=$("cap");
+  function fmt(s){s=Math.floor(s);return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
+  function speak(txt){
+    if(!("speechSynthesis" in window))return;
+    speechSynthesis.cancel();
+    if(!voice||!playing)return;
+    var u=new SpeechSynthesisUtterance(txt);u.rate=1.05;speechSynthesis.speak(u);
+  }
+  function show(i){
+    if(i===cur)return;cur=i;
+    scenes.forEach(function(s,k){s.classList.toggle("on",k===i)});
+    var say=scenes[i].dataset.say;
+    cap.textContent=say;cap.hidden=!cc;
+    speak(say);
+  }
+  function seekTo(x){t=Math.max(0,Math.min(total-.01,x));cur=-1;}
+  function tick(now){
+    var dt=(now-last)/1000;last=now;
+    if(playing){t+=dt;if(t>=total){t=total;playing=false;$("play").textContent="↺";if("speechSynthesis" in window)speechSynthesis.cancel()}}
+    var i=0;for(var k=0;k<starts.length;k++)if(t>=starts[k])i=k;
+    show(i);
+    $("prog").style.width=(t/total*100)+"%";
+    $("time").textContent=fmt(t)+" / "+fmt(total);
+    requestAnimationFrame(tick);
+  }
+  $("play").onclick=function(){
+    if(t>=total){seekTo(0);playing=true;$("play").textContent="⏸";return}
+    playing=!playing;$("play").textContent=playing?"⏸":"▶";
+    if(playing){cur=-1}else if("speechSynthesis" in window){speechSynthesis.cancel()}
+  };
+  $("voice").onclick=function(){
+    voice=!voice;this.textContent=voice?"🔊":"🔇";this.setAttribute("aria-pressed",voice);
+    var s=scenes[cur];if(voice&&s)speak(s.dataset.say);else if("speechSynthesis" in window)speechSynthesis.cancel();
+  };
+  $("cc").onclick=function(){cc=!cc;this.setAttribute("aria-pressed",cc);cap.hidden=!cc};
+  var seek=$("seek");
+  function seekEvt(e){var r=seek.getBoundingClientRect();seekTo((e.clientX-r.left)/r.width*total);if(t<total&&!playing&&$("play").textContent==="↺"){}}
+  seek.addEventListener("click",seekEvt);
+  seek.addEventListener("keydown",function(e){
+    if(e.key==="ArrowRight")seekTo(t+5);else if(e.key==="ArrowLeft")seekTo(t-5);
+  });
+  document.addEventListener("keydown",function(e){if(e.code==="Space"&&e.target.tagName!=="BUTTON"){e.preventDefault();$("play").click()}});
+  requestAnimationFrame(function(n){last=n;tick(n)});
+})();
+</script>
+</body>
+</html>
