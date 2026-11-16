@@ -7,17 +7,9 @@ import {
   FileText,
   Wallet,
   KanbanSquare,
-  Sparkles,
-  TrendingUp,
-  CheckCircle2,
-  Calendar,
   Layers,
-  ArrowRight,
   Download,
   Share2,
-  Coins,
-  Check,
-  Search,
 } from "lucide-react"
 
 type TabKey = "dashboard" | "copilot" | "plan" | "finance" | "projects"

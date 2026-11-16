@@ -2,17 +2,11 @@
 
 import * as React from "react"
 import {
-  AlertTriangle,
-  CheckCircle2,
-  HelpCircle,
   TrendingDown,
   Layers,
   ArrowRight,
   Compass,
-  FileSpreadsheet,
-  Split,
   Sparkles,
-  Zap,
 } from "lucide-react"
 
 const challenges = [
@@ -110,7 +104,7 @@ export function ProblemOpportunitySection() {
 
           {/* Rows */}
           <div className="divide-y divide-border">
-            {challenges.map((item, index) => (
+            {challenges.map((item) => (
               <div
                 key={item.problem}
                 className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border group transition-colors hover:bg-muted/15"

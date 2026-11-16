@@ -173,125 +173,100 @@ function parseAnalyticsJson(response: string): Partial<AnalyticsWorkspace> {
   throw new Error("The AI response did not contain a complete JSON object.");
 }
 
+/** Month-over-month growth assumed by the fallback projection — stated in the UI text. */
+const FALLBACK_MONTHLY_GROWTH = 0.05;
+
+/**
+ * Deterministic projection used only when the AI response is unusable.
+ *
+ * It never invents a starting point: month 1 is exactly the founder's tracked
+ * numbers, grown by a modest, disclosed rate. With no tracked numbers there is
+ * nothing honest to project from, so it returns null and the caller asks the
+ * founder for data instead.
+ */
 function buildFallbackAnalyticsWorkspace(
-  startup: {
-    name: string;
-    city?: string | null;
-    country_code: string;
-    industry?: string | null;
-    estimated_budget_cents?: number | null;
-    budget_currency?: string | null;
-  },
-  project: {
-    title: string;
-    description?: string | null;
-  },
+  startup: { name: string },
+  project: { title: string },
   currency: string,
   tracked: TrackedMetrics,
-): AnalyticsWorkspace {
-  const baseRevenue = tracked.monthlyRevenue > 0
-    ? Math.round(tracked.monthlyRevenue * 1.35)
-    : Math.max(1500, Math.round(((startup.estimated_budget_cents || 0) / 100) * 0.4) || 2400);
+): AnalyticsWorkspace | null {
+  if (!hasTrackedMetrics(tracked)) return null;
 
-  const baseActive = tracked.activeCustomers > 0
-    ? Math.round(tracked.activeCustomers * 1.4)
-    : 320;
+  const revenue = tracked.monthlyRevenue;
+  const active = tracked.activeCustomers;
+  const visitors = tracked.visitorsThisMonth;
+  const burn = tracked.monthlyBurn;
+  const growthPct = Math.round(FALLBACK_MONTHLY_GROWTH * 100);
 
-  const baseVisitors = tracked.visitorsThisMonth > 0
-    ? Math.round(tracked.visitorsThisMonth * 1.5)
-    : 6500;
-
-  const baseBurn = tracked.monthlyBurn > 0
-    ? tracked.monthlyBurn
-    : Math.max(800, Math.round(baseRevenue * 0.65));
-
-  const monthNames = ["Month 1", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6"];
-  const multipliers = [0.7, 0.85, 1.0, 1.18, 1.4, 1.68];
-
-  const history: ChartDataPoint[] = monthNames.map((month, idx) => {
-    const m = multipliers[idx];
+  const history: ChartDataPoint[] = Array.from({ length: 6 }, (_, idx) => {
+    const m = Math.pow(1 + FALLBACK_MONTHLY_GROWTH, idx);
     return {
-      month,
-      visitors: Math.round(baseVisitors * m),
-      signups: Math.round(baseVisitors * 0.18 * m),
-      activeUsers: Math.round(baseActive * m),
-      revenueUSD: Math.round(baseRevenue * m),
+      month: idx === 0 ? "Now (tracked)" : `Month +${idx}`,
+      visitors: Math.round(visitors * m),
+      // Sign-ups are not tracked yet, so they are not projected.
+      signups: 0,
+      activeUsers: Math.round(active * m),
+      revenueUSD: Math.round(revenue * m),
     };
   });
 
-  const channels: PaymentChannel[] = [
-    {
-      name: "Mobile Money (M-Pesa / MTN / Orange)",
-      percentage: 65,
-      amountCents: Math.round(baseRevenue * 0.65 * 100),
-    },
-    {
-      name: "Card Payments (Debit / Credit)",
-      percentage: 20,
-      amountCents: Math.round(baseRevenue * 0.20 * 100),
-    },
-    {
-      name: "Direct Bank Transfer / Instant EFT",
-      percentage: 10,
-      amountCents: Math.round(baseRevenue * 0.10 * 100),
-    },
-    {
-      name: "Cash / Agent Network",
-      percentage: 5,
-      amountCents: Math.round(baseRevenue * 0.05 * 100),
-    },
-  ];
-
+  const conversion = visitors > 0 && active > 0 ? Math.round((active / visitors) * 1000) / 10 : 0;
   const funnel: FunnelStep[] = [
-    { stage: "Discovery / Visitors", count: baseVisitors, conversionRate: 100 },
-    { stage: "Product Consideration / Leads", count: Math.round(baseVisitors * 0.28), conversionRate: 28 },
-    { stage: "Signups / Activated Users", count: Math.round(baseVisitors * 0.11), conversionRate: 11 },
-    { stage: "Paying Customers", count: baseActive, conversionRate: Math.max(1, Math.round((baseActive / baseVisitors) * 1000) / 10) },
+    { stage: "Visitors this month (tracked)", count: visitors, conversionRate: visitors > 0 ? 100 : 0 },
+    { stage: "Leads (not tracked yet)", count: 0, conversionRate: 0 },
+    { stage: "Sign-ups (not tracked yet)", count: 0, conversionRate: 0 },
+    { stage: "Active customers (tracked)", count: active, conversionRate: conversion },
   ];
 
+  // Payment mix is not tracked; show a single honest bucket rather than an invented split.
+  const channels: PaymentChannel[] = [
+    { name: "All channels (split not tracked yet)", percentage: 100, amountCents: Math.round(revenue * 100) },
+  ];
+
+  const in6 = (value: number) => Math.round(value * Math.pow(1 + FALLBACK_MONTHLY_GROWTH, 5));
   const kpis: MetricCard[] = [
     {
-      title: "Projected Monthly Revenue",
-      value: `${baseRevenue.toLocaleString()} ${currency}`,
-      change: "+24.5% vs baseline",
-      trend: "up",
+      title: "Projected Monthly Revenue (month 6)",
+      value: `${in6(revenue).toLocaleString()} ${currency}`,
+      change: `From ${revenue.toLocaleString()} ${currency} today at +${growthPct}%/month`,
+      trend: revenue > 0 ? "up" : "neutral",
       color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30",
     },
     {
-      title: "Projected Active Customers",
-      value: baseActive.toLocaleString(),
-      change: "+18.2% MoM",
-      trend: "up",
+      title: "Projected Active Customers (month 6)",
+      value: in6(active).toLocaleString(),
+      change: `From ${active.toLocaleString()} today at +${growthPct}%/month`,
+      trend: active > 0 ? "up" : "neutral",
       color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30",
     },
     {
       title: "Scenario Monthly Burn",
-      value: `${baseBurn.toLocaleString()} ${currency}`,
-      change: "-4.0% efficiency",
+      value: `${burn.toLocaleString()} ${currency}`,
+      change: "Held flat at your tracked burn",
       trend: "neutral",
       color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30",
     },
     {
-      title: "Projected Conversion Rate",
-      value: `${funnel[3].conversionRate}%`,
-      change: "+0.8% scenario lift",
-      trend: "up",
+      title: "Visitor → Customer Conversion",
+      value: conversion > 0 ? `${conversion}%` : "—",
+      change: conversion > 0 ? "Computed from your tracked numbers" : "Track visitors and customers to compute",
+      trend: "neutral",
       color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
     },
   ];
 
   const recommendations = [
     {
-      title: "Deepen Mobile Money Integration",
-      detail: `Prioritize native USSD and Mobile Money checkouts for ${startup.name} to minimize drop-off at payment stages across local markets.`,
+      title: "This is a simple projection",
+      detail: `The AI projection was unavailable, so these figures grow your tracked numbers by ${growthPct}% a month. Generate again later for an AI scenario.`,
     },
     {
-      title: "Streamline User Activation Flow",
-      detail: `Reduce time-to-first-value for ${project.title} by shortening onboarding steps and offering guided product tours during the first session.`,
+      title: "Track the missing funnel steps",
+      detail: `Record leads, sign-ups and payment channels for ${project.title} so ${startup.name} can see where users drop off.`,
     },
     {
-      title: "Incentivize Peer Referrals",
-      detail: "Deploy transaction discount credits for early customers who introduce fellow merchants or users to drive organic customer acquisition.",
+      title: "Update your numbers monthly",
+      detail: "Projections are only as good as the tracked numbers they start from — refresh them at the start of each month.",
     },
   ];
 
@@ -321,7 +296,7 @@ export async function generateAnalyticsWorkspace(
   const tracked = readTrackedMetrics(metadata, currency);
   const trackedContext = hasTrackedMetrics(tracked)
     ? `
-Founder-reported (tracked) metrics — use as anchors for a realistic projection, do not ignore them:
+Founder-reported (tracked) metrics. The FIRST "history" month must equal these numbers exactly, later months grow from them at a realistic rate, and KPI "change" text must describe growth relative to them (never invent a past baseline):
 - Monthly revenue: ${tracked.monthlyRevenue} ${tracked.currency}
 - Active customers: ${tracked.activeCustomers}
 - Monthly burn: ${tracked.monthlyBurn} ${tracked.currency}
@@ -395,27 +370,36 @@ ${trackedContext}`;
     console.warn("AI generation failed or had formatting errors, using fallback workspace:", error);
   }
 
-  const fallback = buildFallbackAnalyticsWorkspace(
-    startup,
-    project,
-    currency,
-    tracked,
-  );
+  const aiComplete =
+    (aiData.kpis?.length ?? 0) >= 4 &&
+    (aiData.funnel?.length ?? 0) >= 4 &&
+    (aiData.channels?.length ?? 0) > 0 &&
+    (aiData.history?.length ?? 0) >= 6 &&
+    (aiData.recommendations?.length ?? 0) > 0;
 
-  const workspace: AnalyticsWorkspace = {
-    source: "projected",
-    generatedAt: new Date().toISOString(),
-    kpis: (aiData.kpis && aiData.kpis.length >= 4 ? aiData.kpis : fallback.kpis) as MetricCard[],
-    funnel: (aiData.funnel && aiData.funnel.length >= 4 ? aiData.funnel : fallback.funnel) as FunnelStep[],
-    channels: (aiData.channels && aiData.channels.length > 0 ? aiData.channels : fallback.channels) as PaymentChannel[],
-    history: (aiData.history && aiData.history.length >= 6 ? aiData.history : fallback.history) as ChartDataPoint[],
-    recommendations: (aiData.recommendations && aiData.recommendations.length > 0
-      ? aiData.recommendations
-      : fallback.recommendations) as {
-      title: string;
-      detail: string;
-    }[],
-  };
+  let workspace: AnalyticsWorkspace;
+  if (aiComplete) {
+    workspace = {
+      source: "projected",
+      generatedAt: new Date().toISOString(),
+      kpis: aiData.kpis as MetricCard[],
+      funnel: aiData.funnel as FunnelStep[],
+      channels: aiData.channels as PaymentChannel[],
+      history: aiData.history as ChartDataPoint[],
+      recommendations: aiData.recommendations as { title: string; detail: string }[],
+    };
+  } else {
+    // Never splice template numbers into a partial AI answer.
+    const fallback = buildFallbackAnalyticsWorkspace(startup, project, currency, tracked);
+    if (!fallback) {
+      return {
+        success: false,
+        error:
+          "The AI projection is unavailable right now. Save your tracked numbers above, or try again in a moment.",
+      };
+    }
+    workspace = fallback;
+  }
 
   const { error } = await supabase
     .from("projects")

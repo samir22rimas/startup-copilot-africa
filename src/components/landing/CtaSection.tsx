@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Sparkles, ShieldCheck } from "lucide-react"
+import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
 
 export function CtaSection() {
   return (

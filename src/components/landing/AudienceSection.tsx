@@ -8,7 +8,6 @@ import {
   Store,
   Users2,
   CheckCircle2,
-  ArrowRight,
 } from "lucide-react"
 
 const audiences = [

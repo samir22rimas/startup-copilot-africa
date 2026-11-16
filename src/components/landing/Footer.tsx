@@ -3,7 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Globe2, Sparkles, ArrowUpRight } from "lucide-react"
+import { Globe2 } from "lucide-react"
 
 export function Footer() {
   const currentYear = new Date().getFullYear()

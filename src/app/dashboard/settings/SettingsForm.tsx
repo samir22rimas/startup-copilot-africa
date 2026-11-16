@@ -14,7 +14,6 @@ import {
   BRAND_PRESETS,
   DEFAULT_BRAND_COLOR,
   getContrastRatio,
-  getContrastTextColor,
   isValidHex,
   normalizeHex,
 } from "@/src/lib/brand-theme"

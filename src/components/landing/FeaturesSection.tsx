@@ -8,19 +8,9 @@ import {
   FileText,
   Wallet,
   KanbanSquare,
-  BarChart3,
   Compass,
   CheckCircle2,
   Sparkles,
-  TrendingUp,
-  ArrowRight,
-  ShieldAlert,
-  Coins,
-  BadgeDollarSign,
-  Layers,
-  Award,
-  Users2,
-  Check,
 } from "lucide-react"
 
 export function FeaturesSection() {

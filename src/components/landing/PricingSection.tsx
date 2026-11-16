@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Check, ArrowRight, Sparkles, Clock, ShieldCheck } from "lucide-react"
+import { Check, ArrowRight, Sparkles, Clock } from "lucide-react"
 
 export function PricingSection() {
   return (

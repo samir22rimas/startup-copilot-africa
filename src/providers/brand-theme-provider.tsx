@@ -33,12 +33,15 @@ export function BrandThemeProvider({
     normalizeHex(initialColor || DEFAULT_BRAND_COLOR),
   )
 
-  // Sync if initialColor prop changes (e.g. workspace switch via SSR)
-  React.useEffect(() => {
+  // Sync if initialColor prop changes (e.g. workspace switch via SSR).
+  // Adjusting state during render avoids the extra pass an effect would cause.
+  const [syncedInitialColor, setSyncedInitialColor] = React.useState(initialColor)
+  if (initialColor !== syncedInitialColor) {
+    setSyncedInitialColor(initialColor)
     if (initialColor && isValidHex(initialColor)) {
       setBrandColorState(normalizeHex(initialColor))
     }
-  }, [initialColor])
+  }
 
   const setBrandColor = React.useCallback((hex: string) => {
     if (isValidHex(hex)) {

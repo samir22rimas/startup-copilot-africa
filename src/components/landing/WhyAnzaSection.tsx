@@ -8,9 +8,7 @@ import {
   Milestone,
   Layers,
   Sparkles,
-  Smartphone,
   ShieldCheck,
-  Check,
 } from "lucide-react"
 
 const differentiators = [
