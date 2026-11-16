@@ -12,13 +12,16 @@ import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
 import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
 import { FeedbackModal } from "@/src/components/shared/FeedbackModal"
 import { isPlatformAdmin } from "@/src/lib/admin-guard"
+import { getStartupBrandColor } from "@/src/lib/brand-theme"
 import { getPlanLimits, getPlanTier } from "@/src/lib/plans"
 import { getMonthlyAiUsage } from "@/src/lib/rate-limiter"
+import { BrandThemeProvider } from "@/src/providers/brand-theme-provider"
 
 async function loadShell(): Promise<{
   sidebar: SidebarProps
   user: { avatarUrl?: string; initial: string; name: string; email?: string }
   plan: { tier: string; used: number; limit: number }
+  primaryColor?: string | null
 }> {
   const supabase = await createSupabaseServerClient()
   const {
@@ -35,10 +38,15 @@ async function loadShell(): Promise<{
   const active = startups.length ? resolveActiveStartup(startups, preferredId) : null
   const name = profile?.full_name || user.user_metadata?.full_name || user.email || "User"
   const tier = getPlanTier(user)
+  const primaryColor = getStartupBrandColor(active)
 
   return {
     sidebar: {
-      startups: startups.map((s) => ({ id: s.id, name: s.name })),
+      startups: startups.map((s) => ({
+        id: s.id,
+        name: s.name,
+        primaryColor: getStartupBrandColor(s),
+      })),
       activeStartupId: active?.id ?? null,
       stage: active?.stage ?? null,
       isAdmin: isPlatformAdmin(user),
@@ -50,6 +58,7 @@ async function loadShell(): Promise<{
       email: user.email ?? undefined,
     },
     plan: { tier, used, limit: getPlanLimits(tier).monthlyAiGenerations },
+    primaryColor,
   }
 }
 
@@ -63,25 +72,29 @@ async function DashboardSidebar() {
   return <Sidebar {...shell.sidebar} />
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background font-sans">
-      <DashboardScrollLock />
-      <Suspense fallback={<TopNavSkeleton />}>
-        <DashboardTopNav />
-      </Suspense>
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const shell = await loadShell()
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Suspense fallback={<SidebarSkeleton />}>
-          <DashboardSidebar />
+  return (
+    <BrandThemeProvider initialColor={shell.primaryColor}>
+      <div className="flex h-dvh flex-col overflow-hidden bg-background font-sans">
+        <DashboardScrollLock />
+        <Suspense fallback={<TopNavSkeleton />}>
+          <DashboardTopNav />
         </Suspense>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/30 px-4 py-5 sm:px-6 sm:py-7 lg:px-10">
-          {children}
-        </main>
-      </div>
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <Suspense fallback={<SidebarSkeleton />}>
+            <DashboardSidebar />
+          </Suspense>
 
-      <FeedbackModal />
-    </div>
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/30 px-4 py-5 sm:px-6 sm:py-7 lg:px-10">
+            {children}
+          </main>
+        </div>
+
+        <FeedbackModal />
+      </div>
+    </BrandThemeProvider>
   )
 }

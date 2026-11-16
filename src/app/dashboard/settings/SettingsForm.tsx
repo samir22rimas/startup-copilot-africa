@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, Building2, Save, Loader2, Check, Gauge } from "lucide-react"
+import { User, Building2, Save, Loader2, Check, Gauge, Palette, Sparkles, RefreshCw, CheckCircle2 } from "lucide-react"
 import { updateStartupSettings, updateUserSettings, type PlanUsage } from "@/src/app/actions/settings"
 import type { StartupStage } from "@/src/lib/database.types"
 import {
@@ -10,6 +10,16 @@ import {
   getAfricanCountryCurrency,
 } from "@/src/lib/african-countries"
 import { INDUSTRIES, INDUSTRY_GROUPS } from "@/src/lib/industries"
+import {
+  BRAND_PRESETS,
+  DEFAULT_BRAND_COLOR,
+  getContrastRatio,
+  getContrastTextColor,
+  isValidHex,
+  normalizeHex,
+} from "@/src/lib/brand-theme"
+import { useBrandTheme } from "@/src/providers/brand-theme-provider"
+import { cn } from "@/src/lib/utils"
 import { useRouter } from "next/navigation"
 
 const STAGES: { value: StartupStage; label: string }[] = [
@@ -41,6 +51,7 @@ interface SettingsFormProps {
     estimatedBudgetCents: number
     description: string
     websiteUrl: string
+    primaryColor?: string
   } | null
   /** False for team members who are not the owner or a co-founder admin. */
   canEditStartup?: boolean
@@ -67,6 +78,34 @@ export function SettingsForm({ user, startup, canEditStartup = true, planUsage =
   )
   const [description, setDescription] = React.useState(startup?.description ?? "")
   const [websiteUrl, setWebsiteUrl] = React.useState(startup?.websiteUrl ?? "")
+
+  const { setBrandColor: setLiveBrandColor } = useBrandTheme()
+  const initialBrandColor = startup?.primaryColor || DEFAULT_BRAND_COLOR
+  const [primaryColor, setPrimaryColor] = React.useState(initialBrandColor)
+  const [customHexInput, setCustomHexInput] = React.useState(initialBrandColor)
+
+  function handleColorChange(newColor: string) {
+    if (!isValidHex(newColor)) return
+    const normalized = normalizeHex(newColor)
+    setPrimaryColor(normalized)
+    setCustomHexInput(normalized)
+    setLiveBrandColor(normalized)
+  }
+
+  function handleHexInputChange(value: string) {
+    setCustomHexInput(value)
+    if (isValidHex(value)) {
+      const normalized = normalizeHex(value)
+      setPrimaryColor(normalized)
+      setLiveBrandColor(normalized)
+    }
+  }
+
+  function handleResetToDefault() {
+    setPrimaryColor(DEFAULT_BRAND_COLOR)
+    setCustomHexInput(DEFAULT_BRAND_COLOR)
+    setLiveBrandColor(DEFAULT_BRAND_COLOR)
+  }
 
   const [savingProfile, setSavingProfile] = React.useState(false)
   const [savingStartup, setSavingStartup] = React.useState(false)
@@ -155,6 +194,7 @@ export function SettingsForm({ user, startup, canEditStartup = true, planUsage =
       estimatedBudget: Number(estimatedBudget) || 0,
       description,
       websiteUrl,
+      primaryColor,
     })
 
     if (!res.success) {
@@ -375,6 +415,174 @@ export function SettingsForm({ user, startup, canEditStartup = true, planUsage =
                 className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-green-600 dark:border-zinc-700 dark:bg-zinc-950"
               />
             </div>
+
+            {/* Brand & Visual Identity */}
+            <div className="sm:col-span-2 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/50">
+                  <Palette className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-900 dark:text-white">Brand & Visual Identity</h3>
+                  <p className="text-xs text-zinc-500">
+                    Choose your startup&apos;s primary brand color. This applies across buttons, active tabs, stat highlights, badges, and investor export documents.
+                  </p>
+                </div>
+              </div>
+
+              {/* Preset Color Swatches */}
+              <div className="mt-4">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">
+                  Brand Color Presets
+                </label>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                  {BRAND_PRESETS.map((preset) => {
+                    const isSelected = normalizeHex(primaryColor) === normalizeHex(preset.hex)
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleColorChange(preset.hex)}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition",
+                          isSelected
+                            ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-xs"
+                            : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700",
+                        )}
+                      >
+                        <span
+                          className="relative flex size-6 shrink-0 items-center justify-center rounded-full shadow-xs ring-1 ring-black/10"
+                          style={{ backgroundColor: preset.hex }}
+                        >
+                          {isSelected && <Check className="size-3 text-white drop-shadow-xs" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                            {preset.name}
+                          </p>
+                          <p className="truncate text-[10px] text-zinc-400">{preset.tag}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Color Input & Picker */}
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
+                  <label htmlFor="brand-color-picker" className="cursor-pointer">
+                    <span
+                      className="inline-block size-6 rounded-lg border border-black/10 shadow-xs transition hover:scale-105"
+                      style={{ backgroundColor: normalizeHex(primaryColor) }}
+                      title="Click to open color picker"
+                    />
+                  </label>
+                  <input
+                    id="brand-color-picker"
+                    type="color"
+                    value={normalizeHex(primaryColor)}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="sr-only"
+                  />
+                  <span className="text-xs font-mono font-semibold uppercase text-zinc-800 dark:text-zinc-200">
+                    {normalizeHex(primaryColor)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customHexInput}
+                    onChange={(e) => handleHexInputChange(e.target.value)}
+                    placeholder="#0B5D45"
+                    maxLength={7}
+                    aria-label="Custom Hex Color"
+                    className="h-10 w-32 rounded-xl border border-zinc-200 bg-white px-3 font-mono text-xs uppercase outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+                  />
+                </div>
+
+                {normalizeHex(primaryColor) !== DEFAULT_BRAND_COLOR && (
+                  <button
+                    type="button"
+                    onClick={handleResetToDefault}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  >
+                    <RefreshCw className="size-3" /> Reset to Anza Green
+                  </button>
+                )}
+              </div>
+
+              {/* Live Interactive Preview */}
+              <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-5 dark:border-zinc-800 dark:bg-zinc-950/60">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-primary" />
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-white">
+                      Live Brand Preview
+                    </span>
+                    <span className="rounded-full bg-zinc-200/80 px-2 py-0.5 text-[10px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      Real-time
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400">
+                    <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    <span>
+                      Contrast:{" "}
+                      <strong className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {Math.max(
+                          getContrastRatio(normalizeHex(primaryColor), "#FFFFFF"),
+                          getContrastRatio(normalizeHex(primaryColor), "#0F172A"),
+                        ).toFixed(1)}
+                        :1
+                      </strong>{" "}
+                      (
+                      {Math.max(
+                        getContrastRatio(normalizeHex(primaryColor), "#FFFFFF"),
+                        getContrastRatio(normalizeHex(primaryColor), "#0F172A"),
+                      ) >= 4.5
+                        ? "WCAG AA Pass"
+                        : "Accessible"}
+                      )
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-4">
+                  {/* Primary Action Button */}
+                  <button
+                    type="button"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition hover:opacity-90"
+                  >
+                    Launch Milestone
+                  </button>
+
+                  {/* Outline Button */}
+                  <button
+                    type="button"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-primary/50 bg-background px-3.5 text-xs font-medium text-primary transition hover:bg-primary/5"
+                  >
+                    Export Pitch Deck
+                  </button>
+
+                  {/* Brand Badge */}
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
+                    <span className="size-1.5 rounded-full bg-primary" /> Active Workspace
+                  </span>
+
+                  {/* Active Nav Item */}
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                    Financial Model
+                  </div>
+
+                  {/* Stat highlight */}
+                  <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900">
+                    <span className="text-xs text-zinc-500">ARR Growth:</span>
+                    <span className="text-xs font-bold text-primary">+34.2%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {canEditStartup ? (
@@ -492,7 +700,7 @@ function SaveButton({ saving, label }: { saving: boolean; label: string }) {
     <button
       type="submit"
       disabled={saving}
-      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-6 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-50"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
     >
       {saving ? (
         <>

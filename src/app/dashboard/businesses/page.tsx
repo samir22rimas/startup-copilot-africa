@@ -7,6 +7,7 @@ import { Badge, EmptyState, PageHeader, PageShell, Panel, PanelHeader, primaryBu
 import { getAllMyStartups } from "@/src/features/business/services/startup.service"
 import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
 import { getAfricanCountryName } from "@/src/lib/african-countries"
+import { getStartupBrandColor, getContrastTextColor } from "@/src/lib/brand-theme"
 import { getCountryProfile } from "@/src/lib/country-profiles"
 import type { MemberRole } from "@/src/lib/database.types"
 import { fmt } from "@/src/lib/i18n/config"
@@ -67,10 +68,18 @@ export default async function BusinessesPage() {
           {startups.map((startup) => {
             const role = roleOf.get(startup.id) ?? (startup.owner_id === user.id ? "owner" : "viewer")
             const isActive = startup.id === active?.id
+            const brandColor = getStartupBrandColor(startup)
             return (
               <Panel key={startup.id} as="article" className="flex flex-col p-5">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold uppercase text-primary-foreground">
+                  <span
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold uppercase text-primary-foreground shadow-xs"
+                    style={
+                      brandColor
+                        ? { backgroundColor: brandColor, color: getContrastTextColor(brandColor) }
+                        : undefined
+                    }
+                  >
                     {startup.name.charAt(0)}
                   </span>
                   <div className="min-w-0 flex-1">

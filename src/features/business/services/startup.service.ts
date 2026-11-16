@@ -1,4 +1,5 @@
 import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
+import { isValidHex, normalizeHex } from "@/src/lib/brand-theme"
 import type { Database } from "@/src/lib/database.types"
 import { getSupabaseAdmin } from "@/src/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
@@ -59,6 +60,7 @@ export async function createStartup(input: {
   industry?: string | null
   estimated_budget_cents?: number | null
   budget_currency?: string
+  primary_color?: string | null
 }): Promise<{ startup: StartupRow | null; error: string | null }> {
   const supabase = await createSupabaseServerClient()
   const { data: { user }, error: userErr } = await supabase.auth.getUser()
@@ -87,6 +89,7 @@ export async function createStartup(input: {
 
   const base = slugify(input.name) || "startup"
   const slug = `${base}-${crypto.randomUUID().slice(0, 8)}`
+  const normColor = input.primary_color && isValidHex(input.primary_color) ? normalizeHex(input.primary_color) : null
 
   const payload: StartupInsert = {
     // Always the caller — never taken from input.
@@ -100,6 +103,7 @@ export async function createStartup(input: {
     description: null,
     estimated_budget_cents: input.estimated_budget_cents ?? null,
     budget_currency: (input.budget_currency ?? "USD").toUpperCase(),
+    business_profile: normColor ? { primary_color: normColor } : {},
   }
 
   // Preferred path: the user's own session, checked by row-level security.

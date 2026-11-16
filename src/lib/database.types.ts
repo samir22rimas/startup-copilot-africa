@@ -66,6 +66,7 @@ export interface Database {
           city: string | null;
           industry: string | null;
           stage: StartupStage;
+          primary_color?: string | null;
           estimated_budget_cents: number | null;
           budget_currency: string;
           website_url: string | null;

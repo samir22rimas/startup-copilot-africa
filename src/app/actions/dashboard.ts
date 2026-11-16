@@ -53,6 +53,12 @@ const newStartupSchema = z.object({
   budgetCurrency: z.string().trim().regex(/^[A-Za-z]{3}$/).default("USD"),
   projectTitle: z.string().trim().min(2, "Project title must be at least 2 characters.").max(160),
   projectDescription: z.string().trim().max(4000).default(""),
+  primaryColor: z
+    .string()
+    .trim()
+    .regex(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})?$/)
+    .optional()
+    .or(z.literal("")),
 });
 
 export interface DashboardTask {
@@ -830,6 +836,7 @@ export async function createStartupAndFirstProject(input: {
   budgetCurrency: string;
   projectTitle: string;
   projectDescription: string;
+  primaryColor?: string;
 }) {
   try {
     const parsed = newStartupSchema.safeParse(input);
@@ -867,6 +874,7 @@ export async function createStartupAndFirstProject(input: {
       industry: input.industry || null,
       estimated_budget_cents: Math.round(input.estimatedBudgetCents),
       budget_currency: input.budgetCurrency,
+      primary_color: input.primaryColor || null,
     });
 
     if (startupError || !startup) {

@@ -71,7 +71,7 @@ const ICONS: Record<NavKey, LucideIcon> = {
 const OPEN_GROUPS_KEY = "anza.nav.groups"
 
 export interface SidebarProps {
-  startups: Array<{ id: string; name: string }>
+  startups: Array<{ id: string; name: string; primaryColor?: string | null }>
   activeStartupId?: string | null
   stage?: StartupStage | null
   isAdmin?: boolean
@@ -177,7 +177,16 @@ function BusinessSwitcher({ startups, activeStartupId, onNavigate }: SidebarProp
                 onClick={() => select(startup)}
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
               >
-                <span className="truncate">{startup.name}</span>
+                <span className="flex items-center gap-2 truncate">
+                  {startup.primaryColor ? (
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: startup.primaryColor }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <span className="truncate">{startup.name}</span>
+                </span>
                 {startup.id === active?.id && <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />}
               </button>
             ))}

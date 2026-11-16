@@ -1,5 +1,6 @@
 import { getCurrentProfile } from "@/src/features/auth/services/profile.service"
 import { getPlanUsage } from "@/src/app/actions/settings"
+import { getStartupBrandColor } from "@/src/lib/brand-theme"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { canManageStartup, getActiveStartupAccess } from "@/src/lib/workspace-access"
 import { SettingsForm } from "./SettingsForm"
@@ -55,6 +56,7 @@ export default async function SettingsPage() {
                 estimatedBudgetCents: startup.estimated_budget_cents || 0,
                 description: startup.description || "",
                 websiteUrl: startup.website_url || "",
+                primaryColor: getStartupBrandColor(startup) || "",
               }
             : null
         }

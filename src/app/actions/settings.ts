@@ -9,6 +9,7 @@ import { currentQuotaWindowStart, getPlanLimits, getPlanTier, nextQuotaReset, ty
 import { getMonthlyAiUsage } from "@/src/lib/rate-limiter"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { safeHttpUrl } from "@/src/lib/validation"
+import { isValidHex, normalizeHex } from "@/src/lib/brand-theme"
 import { canManageStartup, getActiveStartupAccess } from "@/src/lib/workspace-access"
 
 const STAGES = ["idea", "validation", "mvp", "early_revenue", "growth", "scale"] as const satisfies readonly StartupStage[]
@@ -118,6 +119,12 @@ const startupSchema = z.object({
   estimatedBudget: z.number().min(0, "Budget cannot be negative.").max(1e13, "Budget is too large."),
   description: z.string().trim().max(4000, "Description is too long."),
   websiteUrl: z.string().trim().max(500),
+  primaryColor: z
+    .string()
+    .trim()
+    .regex(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})?$/, "Choose a valid hex color code.")
+    .optional()
+    .or(z.literal("")),
 })
 
 export async function updateStartupSettings(formData: {
@@ -130,6 +137,7 @@ export async function updateStartupSettings(formData: {
   estimatedBudget: number
   description: string
   websiteUrl: string
+  primaryColor?: string
 }): Promise<{ success: true } | { success: false; error: string }> {
   const parsed = startupSchema.safeParse({
     ...formData,
@@ -153,21 +161,69 @@ export async function updateStartupSettings(formData: {
     return { success: false, error: "Only the owner and co-founder admins can change startup details." }
   }
 
-  const { data: updated, error } = await access.supabase
-    .from("startups")
-    .update({
-      name: parsed.data.name,
-      industry: parsed.data.industry || null,
-      city: parsed.data.city || null,
-      country_code: parsed.data.countryCode,
-      stage: parsed.data.stage,
-      budget_currency: parsed.data.budgetCurrency,
-      estimated_budget_cents: Math.round(parsed.data.estimatedBudget * 100),
-      description: parsed.data.description || null,
-      website_url: websiteUrl,
-    })
-    .eq("id", access.startup.id)
-    .select("id")
+  const rawProfile =
+    typeof access.startup.business_profile === "object" && access.startup.business_profile !== null
+      ? (access.startup.business_profile as Record<string, unknown>)
+      : {}
+
+  const normalizedColor =
+    parsed.data.primaryColor && isValidHex(parsed.data.primaryColor)
+      ? normalizeHex(parsed.data.primaryColor)
+      : null
+
+  const updatedProfile = {
+    ...rawProfile,
+    primary_color: normalizedColor,
+  }
+
+  const updateFields = {
+    name: parsed.data.name,
+    industry: parsed.data.industry || null,
+    city: parsed.data.city || null,
+    country_code: parsed.data.countryCode,
+    stage: parsed.data.stage,
+    budget_currency: parsed.data.budgetCurrency,
+    estimated_budget_cents: Math.round(parsed.data.estimatedBudget * 100),
+    description: parsed.data.description || null,
+    website_url: websiteUrl,
+    business_profile: updatedProfile,
+  }
+
+  // First try updating with primary_color column. If column doesn't exist yet, fallback to business_profile.
+  let error: { message: string } | null = null
+  let updated: { id: string }[] | null = null
+
+  try {
+    const res = await access.supabase
+      .from("startups")
+      .update({
+        ...updateFields,
+        primary_color: normalizedColor,
+      })
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+    updated = res.data
+  } catch {
+    // Retry without primary_color column
+    const res = await access.supabase
+      .from("startups")
+      .update(updateFields)
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+    updated = res.data
+  }
+
+  if (error && error.message.includes("primary_color")) {
+    const res = await access.supabase
+      .from("startups")
+      .update(updateFields)
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+    updated = res.data
+  }
 
   if (error || !updated?.length) {
     if (error) console.error("updateStartupSettings", error.message)
@@ -180,6 +236,74 @@ export async function updateStartupSettings(formData: {
   revalidatePath("/dashboard/legal")
   revalidatePath("/dashboard/funding")
   revalidatePath("/dashboard/analytics")
+  revalidatePath("/dashboard/businesses")
+  return { success: true }
+}
+
+/** Quickly update or reset just the startup's brand color. */
+export async function updateStartupBrandColor(
+  primaryColor: string | null,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const access = await getActiveStartupAccess()
+  if ("error" in access) return { success: false, error: access.error }
+  if (!canManageStartup(access.role)) {
+    return { success: false, error: "Only the owner and co-founder admins can change startup branding." }
+  }
+
+  const normalized = primaryColor && isValidHex(primaryColor) ? normalizeHex(primaryColor) : null
+
+  const rawProfile =
+    typeof access.startup.business_profile === "object" && access.startup.business_profile !== null
+      ? (access.startup.business_profile as Record<string, unknown>)
+      : {}
+
+  const updatedProfile = {
+    ...rawProfile,
+    primary_color: normalized,
+  }
+
+  let error: { message: string } | null = null
+  try {
+    const res = await access.supabase
+      .from("startups")
+      .update({
+        business_profile: updatedProfile,
+        primary_color: normalized,
+      })
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+  } catch {
+    const res = await access.supabase
+      .from("startups")
+      .update({
+        business_profile: updatedProfile,
+      })
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+  }
+
+  if (error && error.message.includes("primary_color")) {
+    const res = await access.supabase
+      .from("startups")
+      .update({
+        business_profile: updatedProfile,
+      })
+      .eq("id", access.startup.id)
+      .select("id")
+    error = res.error
+  }
+
+  if (error) {
+    console.error("updateStartupBrandColor", error.message)
+    return { success: false, error: "Could not save brand color." }
+  }
+
+  revalidatePath("/dashboard/settings")
+  revalidatePath("/dashboard", "layout")
+  revalidatePath("/dashboard")
+  revalidatePath("/dashboard/businesses")
   return { success: true }
 }
 
