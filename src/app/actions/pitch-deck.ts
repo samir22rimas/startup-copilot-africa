@@ -75,7 +75,7 @@ function parseDeck(response: string): PitchDeckSlide[] | null {
 }
 
 export async function generatePitchDeck(projectId: string): Promise<{ success: true; deck: PitchDeck } | { success: false; error: string }> {
-  const access = await getProjectAccess(projectId)
+  const access = await getProjectAccess(projectId, "edit")
   if ("error" in access) return { success: false, error: access.error }
   const { supabase, user, startup, project } = access
 
@@ -136,7 +136,7 @@ State the funding amount sought in ${context.currency}. Break down the use of fu
 
 export async function savePitchDeck(projectId: string, deck: PitchDeck): Promise<{ success: true } | { success: false; error: string }> {
   if (!isStorableObject(deck)) return { success: false, error: "That is too much content to save. Shorten it and try again." }
-  const access = await getProjectAccess(projectId)
+  const access = await getProjectAccess(projectId, "edit")
   if ("error" in access) return { success: false, error: access.error }
   const { supabase, project } = access
   const metadata = project.metadata && typeof project.metadata === "object" && !Array.isArray(project.metadata) ? project.metadata : {}

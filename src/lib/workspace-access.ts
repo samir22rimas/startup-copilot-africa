@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js"
 import type { Database, MemberRole } from "@/src/lib/database.types"
 import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-startup"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
+import { roleCan, type Capability } from "@/src/lib/permissions"
 import { isUuid } from "@/src/lib/validation"
 
 type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
@@ -23,6 +24,7 @@ export type ProjectAccess = StartupAccess & {
   metadata: Record<string, unknown>
 }
 
+export const READ_ONLY_ACCESS = "Your role in this business is read-only."
 export const SIGN_IN_REQUIRED = "Please sign in to continue."
 export const PROJECT_UNAVAILABLE = "This project is not available to you."
 export const STARTUP_UNAVAILABLE = "Your startup could not be found."
@@ -58,7 +60,10 @@ function resolveRole(role: MemberRole | null, startup: StartupRow, userId: strin
  * by row-level security), so co-founders and members get the same workspace as
  * the owner, and users with several startups always get the right one.
  */
-export async function getProjectAccess(projectId: string): Promise<ProjectAccess | AccessError> {
+export async function getProjectAccess(
+  projectId: string,
+  capability: Capability = "view",
+): Promise<ProjectAccess | AccessError> {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
@@ -79,6 +84,8 @@ export async function getProjectAccess(projectId: string): Promise<ProjectAccess
   ])
   const effectiveRole = startup ? resolveRole(role, startup, user.id) : null
   if (!startup || !effectiveRole) return { error: PROJECT_UNAVAILABLE }
+  // Read-only roles are stopped here, before any AI call is spent on work they cannot save.
+  if (!roleCan(effectiveRole, capability)) return { error: READ_ONLY_ACCESS }
 
   return {
     supabase,

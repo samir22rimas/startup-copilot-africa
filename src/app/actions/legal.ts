@@ -253,7 +253,7 @@ export async function generateLegalComplianceWorkspace(
   | { success: true; workspace: LegalWorkspace }
   | { success: false; error: string }
 > {
-  const access = await getProjectAccess(projectId);
+  const access = await getProjectAccess(projectId, "edit");
   if ("error" in access) return { success: false, error: access.error };
   const { supabase, user, startup, project } = access;
 

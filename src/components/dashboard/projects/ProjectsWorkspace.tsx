@@ -53,7 +53,6 @@ import {
   isOverdue,
   positionAt,
   todayIso,
-  type ExecutionMilestone,
   type ExecutionPlan,
   type ExecutionTask,
 } from "@/src/lib/execution"

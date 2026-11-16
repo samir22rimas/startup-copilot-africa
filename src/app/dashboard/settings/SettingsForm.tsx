@@ -601,7 +601,7 @@ export function SettingsForm({ user, startup, canEditStartup = true, planUsage =
 }
 
 function PlanUsageCard({ usage }: { usage: PlanUsage }) {
-  const percent = usage.aiLimit > 0 ? Math.min(100, Math.round((usage.aiUsed / usage.aiLimit) * 100)) : 0
+  const percent = usage.aiLimit && usage.aiLimit > 0 ? Math.min(100, Math.round((usage.aiUsed / usage.aiLimit) * 100)) : 0
   const resets = new Date(usage.resetsAt).toLocaleDateString(undefined, {
     day: "numeric",
     month: "long",
@@ -627,15 +627,15 @@ function PlanUsageCard({ usage }: { usage: PlanUsage }) {
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-sm font-semibold text-zinc-900 dark:text-white">AI generations this month</p>
           <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
-            {usage.aiUsed.toLocaleString()} / {usage.aiLimit.toLocaleString()}
+            {usage.aiLimit === null ? "Unlimited" : `${usage.aiUsed.toLocaleString()} / ${usage.aiLimit.toLocaleString()}`}
           </p>
         </div>
         <div
           className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
           role="progressbar"
           aria-valuemin={0}
-          aria-valuemax={usage.aiLimit}
-          aria-valuenow={Math.min(usage.aiUsed, usage.aiLimit)}
+          aria-valuemax={usage.aiLimit ?? undefined}
+          aria-valuenow={usage.aiLimit === null ? undefined : Math.min(usage.aiUsed, usage.aiLimit)}
           aria-label="AI generations used this month"
         >
           <div
@@ -651,11 +651,11 @@ function PlanUsageCard({ usage }: { usage: PlanUsage }) {
       <dl className="mt-6 grid grid-cols-2 gap-4">
         <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950/50">
           <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Team seats per startup</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.teamSeats}</dd>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.teamSeats ?? "Unlimited"}</dd>
         </div>
         <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-950/50">
           <dt className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Businesses you can own</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.startupLimit}</dd>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">{usage.startupLimit ?? "Unlimited"}</dd>
         </div>
       </dl>
     </section>

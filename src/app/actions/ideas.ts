@@ -21,7 +21,7 @@ import {
   type IdeaRatings,
 } from "@/src/lib/ideas/score"
 import { getIndustryLabel } from "@/src/lib/industries"
-import { getPlanLimits, getPlanTier } from "@/src/lib/plans"
+import { getEntitlements } from "@/src/lib/entitlements"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { isUuid } from "@/src/lib/validation"
 import { fail, type ActionResult } from "@/src/lib/workspace"
@@ -115,7 +115,7 @@ export async function generateIdeas(
 
   const result = await runAiStructured({
     feature: `ideas.generate.${data.mode}`,
-    caller: { userId: user.id, startupId: null, tier: getPlanTier(user) },
+    caller: { userId: user.id, startupId: null, ...getEntitlements(user) },
     gate: "idea_lab",
     system: baseSystemPrompt({
       role: "a business idea coach for first-time entrepreneurs in Africa",
@@ -181,15 +181,14 @@ export async function saveIdea(input: {
   const { supabase, user } = await currentUser()
   if (!user) return fail("Please sign in to continue.")
 
-  const tier = getPlanTier(user)
-  const { savedIdeas } = getPlanLimits(tier)
+  const entitlements = getEntitlements(user)
   const { count } = await supabase
     .from("business_ideas")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .neq("status", "archived")
-  if ((count ?? 0) >= savedIdeas) {
-    return fail(`The ${tier} plan keeps up to ${savedIdeas} ideas. Remove one to save another.`)
+  if (!entitlements.unlimited && (count ?? 0) >= entitlements.limits.savedIdeas) {
+    return fail(`The ${entitlements.tier} plan keeps up to ${entitlements.limits.savedIdeas} ideas. Remove one to save another.`)
   }
 
   const { title, summary, ratings, ...analysis } = parsed.data

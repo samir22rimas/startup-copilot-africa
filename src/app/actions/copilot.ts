@@ -130,7 +130,7 @@ export async function sendCopilotMessage(input: {
 
   const ws = await requireWorkspace("view")
   if ("error" in ws) return fail(ws.error)
-  if (mode !== "advisor" && !planHasFeature(ws.tier, "copilot_specialists")) {
+  if (mode !== "advisor" && !ws.unlimited && !planHasFeature(ws.tier, "copilot_specialists")) {
     return fail(featureLockedMessage("copilot_specialists"))
   }
 
@@ -181,7 +181,7 @@ export async function sendCopilotMessage(input: {
 
   // 3. Context for this mode. Memory is a paid capability.
   const config = COPILOT_MODE_CONFIG[mode]
-  const parts = config.context.filter((part) => part !== "memory" || planHasFeature(ws.tier, "copilot_memory"))
+  const parts = config.context.filter((part) => part !== "memory" || ws.unlimited || planHasFeature(ws.tier, "copilot_memory"))
   const context = await buildBusinessContext(ws, parts)
   const canAct = roleCan(ws.role, "edit")
 
@@ -315,7 +315,7 @@ export async function applyCopilotAction(input: {
     }
     revalidatePath("/dashboard/projects")
   } else {
-    if (!planHasFeature(ws.tier, "copilot_memory")) return fail(featureLockedMessage("copilot_memory"))
+    if (!ws.unlimited && !planHasFeature(ws.tier, "copilot_memory")) return fail(featureLockedMessage("copilot_memory"))
     const { error } = await ws.supabase.from("business_memory").insert({
       startup_id: ws.startup.id,
       kind: action.type === "decision" ? "decision" : action.kind,
@@ -368,7 +368,7 @@ export async function addMemory(input: {
   if (!MEMORY_KINDS.includes(input.kind as MemoryKind)) return fail("Choose a type.")
   const ws = await requireWorkspace("edit")
   if ("error" in ws) return fail(ws.error)
-  if (!planHasFeature(ws.tier, "copilot_memory")) return fail(featureLockedMessage("copilot_memory"))
+  if (!ws.unlimited && !planHasFeature(ws.tier, "copilot_memory")) return fail(featureLockedMessage("copilot_memory"))
 
   const { data, error } = await ws.supabase
     .from("business_memory")

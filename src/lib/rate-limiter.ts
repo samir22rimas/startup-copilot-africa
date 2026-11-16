@@ -1,4 +1,5 @@
-import { currentQuotaWindowStart, getPlanLimits, getPlanTier, type UserPlanTier } from "@/src/lib/plans";
+import { currentQuotaWindowStart, getPlanLimits, type UserPlanTier } from "@/src/lib/plans";
+import { getEntitlements } from "@/src/lib/entitlements";
 import { getSupabaseAdmin } from "@/src/lib/supabase/admin";
 
 interface RateLimitOptions {
@@ -47,26 +48,30 @@ export async function getMonthlyAiUsage(userId: string): Promise<number> {
   }
 }
 
-async function resolvePlanTier(userId: string): Promise<UserPlanTier> {
-  const { data, error } = await getSupabaseAdmin().auth.admin.getUserById(userId);
-  if (error || !data?.user) return "Free";
-  return getPlanTier(data.user);
-}
-
 /**
  * Gate for every AI call: a short burst limit (20 requests / 60 s) plus the
  * monthly allowance of the user's plan. Records one usage event when allowed.
  */
 export async function checkAiRateLimit(userId: string): Promise<RateLimitResult> {
   try {
-    const tier = await resolvePlanTier(userId);
-    const { monthlyAiGenerations } = getPlanLimits(tier);
+    const { data } = await getSupabaseAdmin().auth.admin.getUserById(userId);
+    const entitlements = getEntitlements(data?.user);
+    if (entitlements.unlimited) {
+      // No quota and no burst limit for platform admins, but the generation is
+      // still counted so their usage shows up like everyone else's.
+      const { error } = await getSupabaseAdmin()
+        .from("usage_events")
+        .insert({ user_id: userId, startup_id: null, event_name: AI_RATE_LIMIT_EVENT, quantity: 1 });
+      if (error) console.error("[rate-limit] insert failed:", error.message);
+      return { allowed: true };
+    }
+    const { monthlyAiGenerations } = getPlanLimits(entitlements.tier);
     const used = await getMonthlyAiUsage(userId);
     if (used >= monthlyAiGenerations) {
       return {
         allowed: false,
         retryAfterSeconds: 3600,
-        message: quotaExceededMessage(tier, monthlyAiGenerations),
+        message: quotaExceededMessage(entitlements.tier, monthlyAiGenerations),
       };
     }
   } catch (err) {

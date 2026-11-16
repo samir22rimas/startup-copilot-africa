@@ -44,7 +44,8 @@ export function OpportunitiesWorkspace({
   const [industry, setIndustry] = React.useState("")
   const [deadline, setDeadline] = React.useState("")
 
-  const today = new Date().toISOString().slice(0, 10)
+  const [now] = React.useState(() => Date.now())
+  const today = new Date(now).toISOString().slice(0, 10)
   const formatDate = (iso: string) =>
     new Date(`${iso}T00:00:00`).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
 
@@ -66,7 +67,7 @@ export function OpportunitiesWorkspace({
     if (deadline === "rolling" && !item.is_rolling) return false
     if (deadline === "30" || deadline === "90") {
       if (!item.deadline || item.deadline < today) return false
-      const limit = new Date(Date.now() + Number(deadline) * DAY).toISOString().slice(0, 10)
+      const limit = new Date(now + Number(deadline) * DAY).toISOString().slice(0, 10)
       if (item.deadline > limit) return false
     }
     return true
@@ -101,7 +102,7 @@ export function OpportunitiesWorkspace({
   function renderCard(item: Opportunity, detailed: boolean) {
     const entry = tracking.get(item.id)
     const passed = Boolean(item.deadline && item.deadline < today)
-    const stale = Date.now() - new Date(`${item.last_verified_at}T00:00:00`).getTime() > 90 * DAY
+    const stale = now - new Date(`${item.last_verified_at}T00:00:00`).getTime() > 90 * DAY
     return (
       <Panel key={item.id} as="article" className="flex flex-col p-5">
         <div className="flex items-start justify-between gap-3">

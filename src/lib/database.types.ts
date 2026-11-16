@@ -446,6 +446,7 @@ export interface Database {
           is_copilot: boolean;
           edited_at: string | null;
           created_at: string;
+          reply_to_id: string | null;
         };
         Insert: {
           id?: string;
@@ -454,6 +455,7 @@ export interface Database {
           author_id: string | null;
           content: string;
           is_copilot?: boolean;
+          reply_to_id?: string | null;
         };
         Update: { content: string };
         Relationships: [];
@@ -461,6 +463,10 @@ export interface Database {
     } & V2Tables;
     Views: Record<string, never>;
     Functions: {
+      get_team_unread_counts: {
+        Args: { target_startup_id: string };
+        Returns: Array<{ channel_key: string; unread: number }>;
+      };
       get_shared_artifact: {
         Args: { share_token: string };
         Returns: Array<{

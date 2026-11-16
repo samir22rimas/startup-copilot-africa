@@ -312,7 +312,7 @@ export async function generateAnalyticsWorkspace(
   | { success: true; workspace: AnalyticsWorkspace }
   | { success: false; error: string }
 > {
-  const access = await getProjectAccess(projectId);
+  const access = await getProjectAccess(projectId, "edit");
   if ("error" in access) return { success: false, error: access.error };
   const { supabase, user, startup, project } = access;
 
@@ -441,7 +441,7 @@ export async function saveTrackedMetrics(
 ): Promise<
   { success: true; metrics: TrackedMetrics } | { success: false; error: string }
 > {
-  const access = await getProjectAccess(projectId);
+  const access = await getProjectAccess(projectId, "edit");
   if ("error" in access) return { success: false, error: access.error };
   const { supabase, project } = access;
 

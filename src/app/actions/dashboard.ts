@@ -10,7 +10,7 @@ import {
 } from "@/src/features/business/services/startup.service";
 import type { Database, Json } from "@/src/lib/database.types";
 import { getDocumentContextForStartup } from "@/src/lib/document-context";
-import { getPlanLimits, getPlanTier } from "@/src/lib/plans";
+import { getEntitlements } from "@/src/lib/entitlements";
 import { checkAiRateLimit } from "@/src/lib/rate-limiter";
 import { getSupabaseAdmin } from "@/src/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
@@ -854,16 +854,15 @@ export async function createStartupAndFirstProject(input: {
     } = await supabase.auth.getUser();
     if (!user) return { success: false as const, error: "Please sign in to continue." };
 
-    const tier = getPlanTier(user);
-    const { startups: startupLimit } = getPlanLimits(tier);
+    const entitlements = getEntitlements(user);
     const { count: ownedCount } = await supabase
       .from("startups")
       .select("id", { count: "exact", head: true })
       .eq("owner_id", user.id);
-    if ((ownedCount ?? 0) >= startupLimit) {
+    if (!entitlements.unlimited && (ownedCount ?? 0) >= entitlements.limits.startups) {
       return {
         success: false as const,
-        error: `The ${tier} plan includes up to ${startupLimit} businesses. Remove one or upgrade to add more.`,
+        error: `The ${entitlements.tier} plan includes up to ${entitlements.limits.startups} businesses. Remove one or upgrade to add more.`,
       };
     }
 

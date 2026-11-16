@@ -86,21 +86,21 @@ export function TaskDialog({
 }) {
   const { t, locale } = useI18n()
   const p = t.projects
-  const [comments, setComments] = React.useState<TaskComment[] | null>(null)
+  const [thread, setThread] = React.useState<{ taskId: string; rows: TaskComment[] } | null>(null)
   const [comment, setComment] = React.useState("")
   const [posting, setPosting] = React.useState(false)
   const taskId = draft?.id
+  // Comments loaded for another task are ignored until this task's arrive.
+  const comments = thread && thread.taskId === taskId ? thread.rows : null
+  const setComments = (update: (rows: TaskComment[] | null) => TaskComment[]) => {
+    if (taskId) setThread((current) => ({ taskId, rows: update(current?.taskId === taskId ? current.rows : null) }))
+  }
 
   React.useEffect(() => {
-    setComment("")
-    if (!taskId) {
-      setComments(null)
-      return
-    }
+    if (!taskId) return
     let cancelled = false
-    setComments(null)
     listTaskComments(taskId).then((rows) => {
-      if (!cancelled) setComments(rows)
+      if (!cancelled) setThread({ taskId, rows })
     })
     return () => {
       cancelled = true

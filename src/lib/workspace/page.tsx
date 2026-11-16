@@ -40,7 +40,7 @@ export async function loadWorkspacePage(options: { feature?: Feature } = {}): Pr
   if (options.feature) {
     // A platform admin can switch a feature off for everyone (admin → Features).
     const { data: flag } = await ws.supabase.from("feature_flags").select("enabled").eq("key", options.feature).maybeSingle()
-    if (flag && flag.enabled === false) {
+    if (!ws.unlimited && flag && flag.enabled === false) {
       return {
         ok: false,
         element: (
@@ -54,7 +54,7 @@ export async function loadWorkspacePage(options: { feature?: Feature } = {}): Pr
     }
   }
 
-  if (options.feature && !planHasFeature(ws.tier, options.feature)) {
+  if (options.feature && !ws.unlimited && !planHasFeature(ws.tier, options.feature)) {
     return {
       ok: false,
       element: (

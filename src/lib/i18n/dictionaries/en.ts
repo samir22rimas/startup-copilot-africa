@@ -5,6 +5,8 @@ import { finance, plan } from "./en/planning"
 import { copilot, projects } from "./en/run"
 import { businesses, opportunities, overview } from "./en/overview"
 import { onboarding } from "./en/onboarding"
+import { documents } from "./en/documents"
+import { teamChat } from "./en/team"
 import { reports } from "./en/reports"
 
 /** English strings. This object's shape is the contract every other language must match. */
@@ -28,4 +30,6 @@ export const en = {
   opportunities,
   businesses,
   onboarding,
+  documents,
+  teamChat,
 }

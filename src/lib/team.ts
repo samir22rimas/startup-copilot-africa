@@ -54,6 +54,61 @@ export interface TeamChannel {
   name: string
 }
 
+/** Reactions offered in team chat, in display order. Keys are what the database stores. */
+export const TEAM_REACTIONS = [
+  { key: "thumbs_up", emoji: "👍" },
+  { key: "heart", emoji: "❤️" },
+  { key: "party", emoji: "🎉" },
+  { key: "laugh", emoji: "😂" },
+  { key: "thanks", emoji: "🙏" },
+  { key: "eyes", emoji: "👀" },
+  { key: "check", emoji: "✅" },
+  { key: "fire", emoji: "🔥" },
+] as const
+
+export type TeamReactionKey = (typeof TEAM_REACTIONS)[number]["key"]
+
+export function isTeamReactionKey(value: unknown): value is TeamReactionKey {
+  return typeof value === "string" && TEAM_REACTIONS.some((reaction) => reaction.key === value)
+}
+
+export interface TeamReaction {
+  key: TeamReactionKey
+  userIds: string[]
+}
+
+/** "general" for the business-wide channel, otherwise the project id. */
+export function channelKeyOf(projectId: string | null): string {
+  return projectId ?? "general"
+}
+
+/** First name used for @mentions, e.g. "Awa Ndiaye" -> "Awa". */
+export function mentionHandle(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || fullName.trim()
+}
+
+/**
+ * Teammates mentioned as @Name in a message (case-insensitive, on word
+ * boundaries). Used to highlight mentions and to tell people they were named.
+ */
+export function findMentionedMembers<T extends { userId: string; fullName: string }>(content: string, members: T[]): T[] {
+  const lower = content.toLowerCase()
+  return members.filter((member) => {
+    const handles = new Set([member.fullName.trim(), mentionHandle(member.fullName)].filter(Boolean))
+    for (const handle of handles) {
+      const needle = `@${handle.toLowerCase()}`
+      let index = lower.indexOf(needle)
+      while (index !== -1) {
+        const before = index === 0 ? " " : lower[index - 1]
+        const after = lower[index + needle.length] ?? " "
+        if (!/[\p{L}\p{N}_]/u.test(before) && !/[\p{L}\p{N}_]/u.test(after)) return true
+        index = lower.indexOf(needle, index + 1)
+      }
+    }
+    return false
+  })
+}
+
 export interface TeamMessage {
   id: string
   startupId: string
@@ -64,6 +119,9 @@ export interface TeamMessage {
   isCopilot: boolean
   editedAt: string | null
   createdAt: string
+  /** The message this one answers, if any. */
+  replyToId: string | null
+  reactions: TeamReaction[]
 }
 
 export type TeamOverview =
@@ -78,7 +136,8 @@ export type TeamOverview =
       invitations: TeamInvitation[]
       channels: TeamChannel[]
       ownerTier: UserPlanTier
-      seatLimit: number
+      /** null means the startup owner is a platform administrator. */
+      seatLimit: number | null
       seatsUsed: number
     }
   | { ready: false; reason: "no_startup" | "setup_required" | "error"; message: string }

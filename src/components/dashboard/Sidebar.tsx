@@ -209,6 +209,25 @@ function BusinessSwitcher({ startups, activeStartupId, onNavigate }: SidebarProp
   )
 }
 
+const GROUPS_CHANGED = "anza:nav-groups"
+
+function subscribeToGroups(onChange: () => void) {
+  window.addEventListener(GROUPS_CHANGED, onChange)
+  window.addEventListener("storage", onChange)
+  return () => {
+    window.removeEventListener(GROUPS_CHANGED, onChange)
+    window.removeEventListener("storage", onChange)
+  }
+}
+
+function readSavedGroups(): string {
+  try {
+    return window.localStorage.getItem(OPEN_GROUPS_KEY) ?? "{}"
+  } catch {
+    return "{}"
+  }
+}
+
 /** Navigation body, shared by the desktop sidebar and the mobile drawer. */
 export function SidebarContent({ onNavigate, ...props }: SidebarProps & { onNavigate?: () => void }) {
   const { t } = useI18n()
@@ -218,16 +237,15 @@ export function SidebarContent({ onNavigate, ...props }: SidebarProps & { onNavi
 
   // Which groups the person has opened or closed by hand; everything else
   // follows the defaults (suggested group + the group of the current page).
-  const [overrides, setOverrides] = React.useState<Partial<Record<NavGroupKey, boolean>>>({})
-
-  React.useEffect(() => {
+  const savedGroups = React.useSyncExternalStore(subscribeToGroups, readSavedGroups, () => "{}")
+  const overrides = React.useMemo<Partial<Record<NavGroupKey, boolean>>>(() => {
     try {
-      const saved = window.localStorage.getItem(OPEN_GROUPS_KEY)
-      if (saved) setOverrides(JSON.parse(saved))
+      const parsed: unknown = JSON.parse(savedGroups)
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}
     } catch {
-      // Preferences are optional.
+      return {}
     }
-  }, [])
+  }, [savedGroups])
 
   function isOpen(key: NavGroupKey) {
     if (key === activeGroup) return true
@@ -235,15 +253,12 @@ export function SidebarContent({ onNavigate, ...props }: SidebarProps & { onNavi
   }
 
   function toggle(key: NavGroupKey) {
-    setOverrides((current) => {
-      const next = { ...current, [key]: !isOpen(key) }
-      try {
-        window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(next))
-      } catch {
-        // Preferences are optional.
-      }
-      return next
-    })
+    try {
+      window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify({ ...overrides, [key]: !isOpen(key) }))
+      window.dispatchEvent(new Event(GROUPS_CHANGED))
+    } catch {
+      // Preferences are optional.
+    }
   }
 
   return (

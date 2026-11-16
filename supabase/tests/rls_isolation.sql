@@ -192,4 +192,52 @@ select pg_temp.expect((select count(*) from public.get_shared_artifact(repeat('z
 select pg_temp.expect_denied($$select count(*) from public.artifacts$$, 'anonymous visitors cannot read artifacts directly');
 reset role;
 
+-- 7. Team chat ----------------------------------------------------------------
+
+-- now() is frozen inside this transaction: give the team a join date in the past
+-- so messages written during the test count as new for them.
+update public.startup_members set joined_at = now() - interval '1 day' where startup_id = '10000000-0000-0000-0000-000000000001';
+
+insert into public.team_messages (id, startup_id, author_id, content) values
+  ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'Alpha general'),
+  ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000e', 'Echo general');
+insert into public.team_messages (id, startup_id, project_id, author_id, content) values
+  ('50000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'Alpha project channel');
+
+select pg_temp.act_as('00000000-0000-0000-0000-00000000000c');
+insert into public.team_messages (startup_id, author_id, content, reply_to_id)
+  values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'Advisor reply', '50000000-0000-0000-0000-000000000001');
+select pg_temp.expect((select count(*) from public.team_messages where reply_to_id is not null) = 1, 'advisor can post a reply in chat');
+insert into public.team_message_reactions (message_id, startup_id, user_id, reaction)
+  values ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'thumbs_up');
+select pg_temp.expect((select count(*) from public.team_message_reactions) = 1, 'advisor can react');
+select pg_temp.expect_denied(
+  $$insert into public.team_messages (startup_id, author_id, content, reply_to_id) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'x', '50000000-0000-0000-0000-000000000003')$$,
+  'a reply cannot point at a message in another channel');
+select pg_temp.expect_denied(
+  $$insert into public.team_message_reactions (message_id, startup_id, user_id, reaction) values ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'heart')$$,
+  'a reaction cannot be attached to another workspace message');
+select pg_temp.expect_denied(
+  $$insert into public.team_message_reactions (message_id, startup_id, user_id, reaction) values ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'skull')$$,
+  'only known reactions are accepted');
+select pg_temp.expect((select coalesce(sum(unread), 0) from public.get_team_unread_counts('10000000-0000-0000-0000-000000000001')) = 2, 'unread counts exclude your own messages');
+insert into public.team_channel_reads (startup_id, user_id, channel_key) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000c', 'general');
+select pg_temp.expect((select coalesce(sum(unread), 0) from public.get_team_unread_counts('10000000-0000-0000-0000-000000000001')) = 1, 'reading a channel clears its unread count');
+reset role;
+
+select pg_temp.act_as('00000000-0000-0000-0000-00000000000d');
+select pg_temp.expect((select count(*) from public.team_messages) = 3, 'viewer can read the team chat');
+select pg_temp.expect_denied(
+  $$insert into public.team_messages (startup_id, author_id, content) values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000d', 'viewer post')$$,
+  'viewer cannot post in team chat');
+select pg_temp.expect_denied(
+  $$insert into public.team_message_reactions (message_id, startup_id, user_id, reaction) values ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000d', 'eyes')$$,
+  'viewer cannot react');
+reset role;
+
+select pg_temp.act_as('00000000-0000-0000-0000-00000000000e');
+select pg_temp.expect((select count(*) from public.team_message_reactions) = 0, 'outsiders cannot see another team''s reactions');
+select pg_temp.expect((select count(*) from public.get_team_unread_counts('10000000-0000-0000-0000-000000000001')) = 0, 'outsiders get no unread counts for another team');
+reset role;
+
 rollback;

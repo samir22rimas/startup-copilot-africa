@@ -5,7 +5,8 @@ import { z } from "zod"
 
 import { updateProfile } from "@/src/features/auth/services/profile.service"
 import type { StartupStage } from "@/src/lib/database.types"
-import { currentQuotaWindowStart, getPlanLimits, getPlanTier, nextQuotaReset, type UserPlanTier } from "@/src/lib/plans"
+import { currentQuotaWindowStart, nextQuotaReset, type UserPlanTier } from "@/src/lib/plans"
+import { getEntitlements, serializableLimit } from "@/src/lib/entitlements"
 import { getMonthlyAiUsage } from "@/src/lib/rate-limiter"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 import { safeHttpUrl } from "@/src/lib/validation"
@@ -310,9 +311,9 @@ export async function updateStartupBrandColor(
 export interface PlanUsage {
   tier: UserPlanTier
   aiUsed: number
-  aiLimit: number
-  teamSeats: number
-  startupLimit: number
+  aiLimit: number | null
+  teamSeats: number | null
+  startupLimit: number | null
   windowStart: string
   resetsAt: string
 }
@@ -325,14 +326,13 @@ export async function getPlanUsage(): Promise<PlanUsage | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const tier = getPlanTier(user)
-  const limits = getPlanLimits(tier)
+  const entitlements = getEntitlements(user)
   return {
-    tier,
+    tier: entitlements.tier,
     aiUsed: await getMonthlyAiUsage(user.id),
-    aiLimit: limits.monthlyAiGenerations,
-    teamSeats: limits.teamSeats,
-    startupLimit: limits.startups,
+    aiLimit: serializableLimit(entitlements.limits.monthlyAiGenerations),
+    teamSeats: serializableLimit(entitlements.limits.teamSeats),
+    startupLimit: serializableLimit(entitlements.limits.startups),
     windowStart: currentQuotaWindowStart().toISOString(),
     resetsAt: nextQuotaReset().toISOString(),
   }

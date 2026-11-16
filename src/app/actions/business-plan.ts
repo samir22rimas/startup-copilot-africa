@@ -254,7 +254,7 @@ export async function getPlanShareLink(): Promise<PlanShareLink | null> {
 export async function createPlanShareLink(): Promise<ActionResult<{ link: PlanShareLink }>> {
   const ws = await requireWorkspace("edit")
   if ("error" in ws) return fail(ws.error)
-  if (!planHasFeature(ws.tier, "plan_sharing")) return fail(featureLockedMessage("plan_sharing"))
+  if (!ws.unlimited && !planHasFeature(ws.tier, "plan_sharing")) return fail(featureLockedMessage("plan_sharing"))
   const plan = await loadPlan(ws)
   if (!plan.id) return fail("Write at least one section before sharing the plan.")
 

@@ -41,10 +41,6 @@ type Tab = "inputs" | "projections" | "tools"
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error"
 
 const newId = () => Math.random().toString(36).slice(2, 10)
-const num = (value: string) => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
-}
 
 function NumberCell({
   value,

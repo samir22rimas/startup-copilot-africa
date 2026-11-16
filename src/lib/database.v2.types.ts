@@ -265,6 +265,23 @@ export type AuditLogRow = {
   created_at: string
 }
 
+export type TeamReactionKey = "thumbs_up" | "heart" | "party" | "laugh" | "thanks" | "eyes" | "check" | "fire"
+
+export type TeamMessageReactionRow = {
+  message_id: string
+  startup_id: string
+  user_id: string
+  reaction: TeamReactionKey
+  created_at: string
+}
+
+export type TeamChannelReadRow = {
+  startup_id: string
+  user_id: string
+  channel_key: string
+  last_read_at: string
+}
+
 export type V2Tables = {
   business_ideas: Table<BusinessIdeaRow, "user_id" | "title", "id" | "user_id" | "created_at">
   artifacts: Table<ArtifactRow, "startup_id" | "module" | "kind" | "title", "id" | "startup_id" | "created_at">
@@ -291,4 +308,6 @@ export type V2Tables = {
   subscriptions: Table<SubscriptionRow, "user_id", "id" | "user_id" | "created_at">
   feature_flags: Table<FeatureFlagRow, "key">
   audit_logs: Table<AuditLogRow, "action">
+  team_message_reactions: Table<TeamMessageReactionRow, "message_id" | "startup_id" | "user_id" | "reaction">
+  team_channel_reads: Table<TeamChannelReadRow, "startup_id" | "user_id" | "channel_key">
 }

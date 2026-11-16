@@ -205,13 +205,43 @@ http://localhost:3000
 
 ---
 
+# Anza 2.0
+
+Anza 2.0 turns the original idea-to-plan tool into a workspace for the whole journey:
+
+| Area | What it does |
+| --- | --- |
+| **Idea Lab** | Ideas from your skills, studies or local problems, scored on six visible criteria; save, compare, convert to a business |
+| **Market Research** | Ten research topics, with web sources and dates when available and explicit limits when not |
+| **Business Validation** | Twelve analyses, an assumptions list, and a log of real interviews, surveys and experiments |
+| **Business Model** | Business Model Canvas and Lean Canvas with autosave, versions, AI suggestions and review |
+| **Business Plan** | 17 sections you can write, edit and improve one by one; versions, PDF/Word export, share link |
+| **Financial Planning** | Start-up costs, projections, break-even, CAC/LTV, runway, seven calculators, live currency conversion |
+| **Marketing Studio** | Eleven strategy analyses and a content writer for six formats |
+| **Projects & Tasks** | Board, list, milestones, calendar, comments; turn an objective into a plan |
+| **AI Copilot** | Six specialists that read your workspace, with memory and click-to-confirm actions |
+| **Opportunities** | A curated, verified catalogue with bookmarks and application tracking |
+| **Overview** | Explainable business health, next actions, risks and activity |
+
+English and French. Roles: Owner, Administrator, Editor, Advisor, Viewer. Plans: Free, Pro, Team.
+
+Architecture and design decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```bash
+npm test            # unit tests
+npm run typecheck   # TypeScript
+npm run test:db     # database isolation tests (DATABASE_URL = a disposable database)
+```
+
+---
+
 # Team Collaboration
 
 Founders rarely build alone. From **Dashboard → Team** the owner can:
 
 - **Invite co-founders, team members and advisors** by email. Each invitation is a private link (copy it, or share by WhatsApp or email) that only the person signed in with the invited, verified email address can accept.
-- **Manage roles** — Owner, Co-founder (admin), Team member, Advisor — and remove people.
-- **Chat with the team in real time**, in a General channel and one channel per project.
+- **Manage roles** — Owner, Administrator, Editor, Advisor (read and comment), Viewer (read only) — and remove people.
+- **Chat with the team in real time**, in a General channel and one channel per project: replies, emoji reactions, @mentions, unread badges, who is online and typing, search across channels, and turning any message into a task. Viewers can read but not post.
 - **Bring the AI Copilot into the conversation** by starting a message with `@copilot`; its answer is posted for the whole team.
 
 Everyone on the team shares the same workspace: plans, documents, marketing, analytics, funding and legal.

@@ -13,14 +13,14 @@ import { readActiveStartupCookie, resolveActiveStartup } from "@/src/lib/active-
 import { FeedbackModal } from "@/src/components/shared/FeedbackModal"
 import { isPlatformAdmin } from "@/src/lib/admin-guard"
 import { getStartupBrandColor } from "@/src/lib/brand-theme"
-import { getPlanLimits, getPlanTier } from "@/src/lib/plans"
+import { getEntitlements, serializableLimit } from "@/src/lib/entitlements"
 import { getMonthlyAiUsage } from "@/src/lib/rate-limiter"
 import { BrandThemeProvider } from "@/src/providers/brand-theme-provider"
 
 async function loadShell(): Promise<{
   sidebar: SidebarProps
   user: { avatarUrl?: string; initial: string; name: string; email?: string }
-  plan: { tier: string; used: number; limit: number }
+  plan: { tier: string; used: number; limit: number | null }
   primaryColor?: string | null
 }> {
   const supabase = await createSupabaseServerClient()
@@ -37,7 +37,7 @@ async function loadShell(): Promise<{
   ])
   const active = startups.length ? resolveActiveStartup(startups, preferredId) : null
   const name = profile?.full_name || user.user_metadata?.full_name || user.email || "User"
-  const tier = getPlanTier(user)
+  const entitlements = getEntitlements(user)
   const primaryColor = getStartupBrandColor(active)
 
   return {
@@ -57,7 +57,7 @@ async function loadShell(): Promise<{
       name: String(name),
       email: user.email ?? undefined,
     },
-    plan: { tier, used, limit: getPlanLimits(tier).monthlyAiGenerations },
+    plan: { tier: entitlements.tier, used, limit: serializableLimit(entitlements.limits.monthlyAiGenerations) },
     primaryColor,
   }
 }

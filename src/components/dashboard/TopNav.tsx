@@ -19,7 +19,7 @@ interface TopNavProps {
     name?: string
     email?: string
   }
-  plan?: { tier: string; used: number; limit: number } | null
+  plan?: { tier: string; used: number; limit: number | null } | null
   /** Navigation data for the mobile drawer. */
   sidebar?: SidebarProps
 }
@@ -83,14 +83,9 @@ export function TopNav({ user, plan, sidebar }: TopNavProps) {
                 {plan && (
                   <div className="border-b border-border px-3 py-2.5">
                     <p className="text-xs font-medium text-foreground">{fmt(t.nav.plan_label, { plan: plan.tier })}</p>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${Math.min(100, Math.round((plan.used / Math.max(1, plan.limit)) * 100))}%` }}
-                      />
-                    </div>
+                    {plan.limit !== null && <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round((plan.used / Math.max(1, plan.limit)) * 100))}%` }} /></div>}
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      {fmt(t.nav.aiUsage, { used: plan.used, limit: plan.limit })}
+                      {plan.limit === null ? "Unlimited AI usage" : fmt(t.nav.aiUsage, { used: plan.used, limit: plan.limit })}
                     </p>
                   </div>
                 )}

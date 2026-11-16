@@ -13,7 +13,7 @@ import type { MemberRole } from "@/src/lib/database.types"
 import { fmt } from "@/src/lib/i18n/config"
 import { getI18n } from "@/src/lib/i18n/server"
 import { getIndustryLabel } from "@/src/lib/industries"
-import { getPlanLimits, getPlanTier } from "@/src/lib/plans"
+import { getEntitlements, serializableLimit } from "@/src/lib/entitlements"
 import { createSupabaseServerClient } from "@/src/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
@@ -34,9 +34,9 @@ export default async function BusinessesPage() {
   const { data: memberships } = await supabase.from("startup_members").select("startup_id, role").eq("user_id", user.id)
   const roleOf = new Map((memberships ?? []).map((m) => [m.startup_id, m.role as MemberRole]))
 
-  const tier = getPlanTier(user)
+  const entitlements = getEntitlements(user)
   const owned = startups.filter((s) => s.owner_id === user.id).length
-  const limit = getPlanLimits(tier).startups
+  const limit = serializableLimit(entitlements.limits.startups)
   const profile = active ? getCountryProfile(active.country_code) : null
 
   return (
@@ -57,7 +57,7 @@ export default async function BusinessesPage() {
         }
       />
 
-      <p className="text-xs text-muted-foreground">{fmt(b.limit, { used: owned, limit, plan: tier })}</p>
+      <p className="text-xs text-muted-foreground">{limit === null ? `${owned} businesses · unlimited` : fmt(b.limit, { used: owned, limit, plan: entitlements.tier })}</p>
 
       {startups.length === 0 ? (
         <Panel>

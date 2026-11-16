@@ -95,7 +95,7 @@ export function TeamPeople({
   role: MemberRole
   canManage: boolean
   canInviteAdmins: boolean
-  seatLimit: number
+  seatLimit: number | null
   seatsUsed: number
   ownerTier: string
 }) {
@@ -109,12 +109,12 @@ export function TeamPeople({
   const [busyId, setBusyId] = React.useState<string | null>(null)
 
   const roleOptions = INVITABLE_ROLES.filter((r) => r !== "admin" || canInviteAdmins)
-  const seatsLeft = Math.max(0, seatLimit - seatsUsed)
+  const seatsLeft = seatLimit === null ? null : Math.max(0, seatLimit - seatsUsed)
 
   /** Whether the signed-in user may change or remove this member (mirrors the database rules). */
   function canManageMember(member: TeamMember) {
     if (!canManage || member.isYou || member.role === "owner") return false
-    return role === "owner" || member.role === "member" || member.role === "advisor"
+    return role === "owner" || member.role === "member" || member.role === "advisor" || member.role === "viewer"
   }
 
   async function handleInvite(e: React.FormEvent) {
@@ -161,7 +161,7 @@ export function TeamPeople({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-bold text-zinc-900 dark:text-white">People</h2>
           <span className="text-[11px] font-semibold text-zinc-500" title={`${ownerTier} plan`}>
-            {seatsUsed} of {seatLimit} seats used
+            {seatsUsed} of {seatLimit === null ? "unlimited" : seatLimit} seats used
           </span>
         </div>
 

@@ -70,6 +70,7 @@ export function CopilotWorkspace({
   const [memoryWhy, setMemoryWhy] = React.useState("")
   const [savingMemory, setSavingMemory] = React.useState(false)
   const listRef = React.useRef<HTMLDivElement>(null)
+  const localId = React.useRef(0)
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
 
   React.useEffect(() => {
@@ -99,14 +100,15 @@ export function CopilotWorkspace({
     if (!value || sending) return
     setSending(true)
     setText("")
-    const optimistic: CopilotMessage = { id: `pending-${Date.now()}`, role: "user", content: value, actions: [], createdAt: new Date().toISOString() }
+    localId.current += 1
+    const optimistic: CopilotMessage = { id: `pending-${localId.current}`, role: "user", content: value, actions: [], createdAt: "" }
     setMessages((list) => [...list, optimistic])
     try {
       const result = await sendCopilotMessage({ conversationId: activeId, mode, text: value })
       if (!result.success) {
         setMessages((list) => [
           ...list,
-          { id: `error-${Date.now()}`, role: "assistant", content: `**${c.couldNotReply}** ${result.error}`, actions: [], createdAt: new Date().toISOString() },
+          { id: `error-${localId.current}`, role: "assistant", content: `**${c.couldNotReply}** ${result.error}`, actions: [], createdAt: "" },
         ])
         return
       }

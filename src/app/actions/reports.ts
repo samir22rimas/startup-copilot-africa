@@ -91,7 +91,7 @@ export async function generateReport(input: {
   if ("error" in ws) return fail(ws.error)
 
   const focus = cleanText(input.focus, 600)
-  const useWeb = definition.web && planHasFeature(ws.tier, "web_research") && webSearchConfigured()
+  const useWeb = definition.web && (ws.unlimited || planHasFeature(ws.tier, "web_research")) && webSearchConfigured()
   const context = await buildBusinessContext(ws, definition.context)
 
   const system = baseSystemPrompt({

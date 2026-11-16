@@ -472,7 +472,7 @@ Unlike generic or informal alternatives, ${context.name} is designed around the 
 }
 
 export async function generateResultsWorkspace(projectId: string): Promise<{ success: true; workspace: ResultsWorkspace } | { success: false; error: string }> {
-  const access = await getProjectAccess(projectId)
+  const access = await getProjectAccess(projectId, "edit")
   if ("error" in access) return { success: false, error: access.error }
   const { supabase, user, startup, project } = access
 

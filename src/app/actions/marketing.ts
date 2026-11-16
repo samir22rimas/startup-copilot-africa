@@ -14,7 +14,7 @@ const EVENT_COLORS = /^[\w\s\-/:.[\]]{1,160}$/
 const MAX_EVENTS = 200
 
 async function getOwnedProject(projectId: string) {
-  return getProjectAccess(projectId)
+  return getProjectAccess(projectId, "edit")
 }
 
 export async function addMarketingEvent(

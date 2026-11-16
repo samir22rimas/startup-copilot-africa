@@ -18,7 +18,7 @@ export default async function ResearchPage() {
 
   const webNotice = !webSearchConfigured()
     ? ({ kind: "unavailable" } as const)
-    : !planHasFeature(ws.tier, "web_research")
+    : !ws.unlimited && !planHasFeature(ws.tier, "web_research")
       ? ({ kind: "locked", plan: minimumPlanFor("web_research") } as const)
       : null
 

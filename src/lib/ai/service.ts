@@ -28,6 +28,8 @@ export interface AiCaller {
   startupId: string | null
   /** Plan that governs feature access for this call. */
   tier: UserPlanTier
+  /** Platform administrators bypass plan gates and monthly AI quotas. */
+  unlimited?: boolean
 }
 
 export type AiErrorCode = "feature_locked" | "rate_limited" | "unavailable" | "invalid_output"
@@ -92,7 +94,7 @@ async function recordUsage(
 }
 
 async function preflight(options: BaseOptions): Promise<AiFailure | null> {
-  if (options.gate && !planHasFeature(options.caller.tier, options.gate)) {
+  if (options.gate && !options.caller.unlimited && !planHasFeature(options.caller.tier, options.gate)) {
     return { ok: false, code: "feature_locked", error: featureLockedMessage(options.gate) }
   }
   const limit = await checkAiRateLimit(options.caller.userId)

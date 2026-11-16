@@ -70,7 +70,7 @@ export function DocumentCenter({
   canEdit: boolean
 }) {
   const { t, locale } = useI18n()
-  const d = (t as unknown as { documents?: Record<string, string> }).documents || {}
+  const d = t.documents
   const [documents, setDocuments] = React.useState(initial)
   const [query, setQuery] = React.useState("")
   const [searching, setSearching] = React.useState(false)

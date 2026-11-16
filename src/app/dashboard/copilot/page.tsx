@@ -21,8 +21,8 @@ export default async function CopilotPage() {
         initialConversations={conversations}
         initialMemory={memory}
         canEdit={canEdit}
-        specialistsEnabled={planHasFeature(ws.tier, "copilot_specialists")}
-        memoryEnabled={planHasFeature(ws.tier, "copilot_memory")}
+        specialistsEnabled={ws.unlimited || planHasFeature(ws.tier, "copilot_specialists")}
+        memoryEnabled={ws.unlimited || planHasFeature(ws.tier, "copilot_memory")}
         upgradePlan={minimumPlanFor("copilot_specialists")}
       />
     </PageShell>

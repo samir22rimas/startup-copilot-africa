@@ -96,7 +96,6 @@ const DEFAULT_PITCH_DECK: PitchDeckItem[] = [
   },
 ];
 
-const DEFAULT_OPPORTUNITIES: FundingOpportunity[] = []
 
 export async function generateFundingWorkspace(
   projectId: string,
@@ -104,7 +103,7 @@ export async function generateFundingWorkspace(
   | { success: true; workspace: FundingWorkspace }
   | { success: false; error: string }
 > {
-  const access = await getProjectAccess(projectId);
+  const access = await getProjectAccess(projectId, "edit");
   if ("error" in access) return { success: false, error: access.error };
   const { supabase, user, startup, project } = access;
 

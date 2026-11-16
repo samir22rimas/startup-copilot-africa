@@ -36,7 +36,7 @@ export default async function BusinessPlanPage() {
         initialShare={share}
         startupName={ws.startup.name}
         canEdit={canEdit}
-        canShare={planHasFeature(ws.tier, "plan_sharing")}
+        canShare={ws.unlimited || planHasFeature(ws.tier, "plan_sharing")}
       />
     </PageShell>
   )

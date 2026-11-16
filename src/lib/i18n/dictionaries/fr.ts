@@ -6,6 +6,8 @@ import { finance, plan } from "./fr/planning"
 import { copilot, projects } from "./fr/run"
 import { businesses, opportunities, overview } from "./fr/overview"
 import { onboarding } from "./fr/onboarding"
+import { documents } from "./fr/documents"
+import { teamChat } from "./fr/team"
 import { reports } from "./fr/reports"
 
 /** French strings. Typed against English, so a missing key is a build error. */
@@ -29,4 +31,6 @@ export const fr: typeof en = {
   opportunities,
   businesses,
   onboarding,
+  documents,
+  teamChat,
 }

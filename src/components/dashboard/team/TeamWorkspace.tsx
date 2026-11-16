@@ -2,6 +2,7 @@
 
 import { TeamChat } from "@/src/components/dashboard/team/TeamChat"
 import { TeamPeople } from "@/src/components/dashboard/team/TeamPeople"
+import { roleCan } from "@/src/lib/permissions"
 import type { TeamOverview } from "@/src/lib/team"
 import { cn } from "@/src/lib/utils"
 import { MessagesSquare, Users } from "lucide-react"
@@ -61,6 +62,8 @@ export function TeamWorkspace({ overview }: { overview: ReadyOverview }) {
             members={overview.members}
             currentUserId={overview.currentUserId}
             canModerate={overview.canManage}
+            canPost={roleCan(overview.role, "comment")}
+            canCreateTasks={roleCan(overview.role, "edit")}
           />
         </div>
         <div className={cn("min-w-0 lg:col-span-4 lg:block", tab === "people" ? "block" : "hidden")}>
