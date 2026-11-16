@@ -99,7 +99,8 @@ export const config = {
      *  - favicon.ico
      *  - public assets (images, etc.)
      *  - /auth/callback, /auth/confirm (Supabase OAuth & email-link handlers)
+     *  - /api/health, robots.txt, sitemap.xml (public, no session needed)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|auth/callback|auth/confirm).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|auth/callback|auth/confirm).*)",
   ],
 }

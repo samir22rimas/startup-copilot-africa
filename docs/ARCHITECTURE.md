@@ -1,12 +1,13 @@
 # Anza 2.0 — Architecture and decisions
 
 This document explains how Anza 2.0 is put together and why. It is written for
-engineers joining the project. For setup, see the root `README.md` and
-`supabase/README.md`.
+engineers joining the project. For setup, see [GETTING_STARTED.md](GETTING_STARTED.md).
+Deeper detail on each layer: [DATABASE.md](DATABASE.md), [AUTHENTICATION.md](AUTHENTICATION.md),
+[AI.md](AI.md) and [API_REFERENCE.md](API_REFERENCE.md).
 
 ## 1. Shape of the system
 
-```
+```text
 Browser ── Next.js 16 (App Router, server actions, proxy.ts)
               │
               ├── src/lib/workspace      who is asking, for which business, with which role and plan
@@ -79,7 +80,7 @@ working.
 
 Every AI feature calls `runAi` or `runAiStructured` in `service.ts`:
 
-```
+```text
 plan feature gate → burst limit + monthly allowance → provider fallback
   → (structured) JSON extraction + zod validation, one repair pass
   → token usage recorded in ai_usage
